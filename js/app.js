@@ -32,6 +32,7 @@
 
     editor:         $('#editor'),
     editorBack:     $('#editor-back'),
+    editorMode:     $('#editor-mode'),
     editorPin:      $('#editor-pin'),
     editorFav:      $('#editor-fav'),
     editorDelete:   $('#editor-delete'),
@@ -709,6 +710,40 @@
     }
   }
 
+  function applyEditorMode() {
+    const ed = state.editor;
+    if (!ed) return;
+    const isEdit = ed.mode === 'edit';
+
+    el.editorTitle.readOnly = !isEdit;
+    el.editorContent.readOnly = !isEdit;
+    el.editor.classList.toggle('is-view-mode', !isEdit);
+
+    el.editorMode.textContent = isEdit ? 'Done' : 'Edit';
+    el.editorMode.setAttribute('aria-label', isEdit ? 'Save note' : 'Edit note');
+  }
+
+  function enterEditMode() {
+    const ed = state.editor;
+    if (!ed || ed.mode === 'edit') return;
+    ed.mode = 'edit';
+    applyEditorMode();
+    requestAnimationFrame(() => {
+      autoGrowTitle();
+      el.editorContent.focus({ preventScroll: true });
+    });
+  }
+
+  async function exitEditMode() {
+    const ed = state.editor;
+    if (!ed || ed.mode === 'view') return;
+    ed.mode = 'view';
+    el.editorTitle.blur();
+    el.editorContent.blur();
+    applyEditorMode();
+    await flushEditorSave();
+  }
+
   function defaultCategoryForNewNote() {
     const sorted = NotesStore.sorted();
     return sorted.length ? sorted[0].category : 'thought';
@@ -729,12 +764,19 @@
       isNew = true;
     }
 
-    state.editor = { note, isNew, timer: null, dirty: false };
+    state.editor = {
+      note,
+      isNew,
+      timer: null,
+      dirty: false,
+      mode: isNew ? 'edit' : 'view'
+    };
     state.lastFocused = document.activeElement;
 
     el.editorTitle.value = note.title;
     el.editorContent.value = note.content;
     renderEditorCategories(note.category);
+    applyEditorMode();
     syncEditorChrome();
 
     el.editor.hidden = false;
@@ -743,7 +785,9 @@
 
     requestAnimationFrame(() => {
       autoGrowTitle();
-      el.editorContent.focus({ preventScroll: true });
+      if (state.editor && state.editor.mode === 'edit') {
+        el.editorContent.focus({ preventScroll: true });
+      }
     });
   }
 
@@ -776,6 +820,9 @@
         renderAll();
         showToast('Empty note removed', 'Undo', async () => {
           await NotesStore.upsert(snapshot);
+          if (state.editor && state.editor.note.id === snapshot.id) {
+            state.editor.isNew = false;
+          }
           renderAll();
         });
       }
@@ -1110,6 +1157,39 @@
       } else {
         closeEditor();
       }
+    });
+
+    el.editorMode.addEventListener('click', async () => {
+      const ed = state.editor;
+      if (!ed) return;
+
+      if (ed.mode === 'view') {
+        enterEditMode();
+        return;
+      }
+
+      await flushEditorSave();
+
+      const current = state.editor;
+      if (!current) return;
+
+      if (current.isNew) {
+        closeEditor();
+        return;
+      }
+
+      exitEditMode();
+      showToast('Note saved');
+    });
+
+    el.editorTitle.addEventListener('click', () => {
+      const ed = state.editor;
+      if (ed && ed.mode === 'view') enterEditMode();
+    });
+
+    el.editorContent.addEventListener('click', () => {
+      const ed = state.editor;
+      if (ed && ed.mode === 'view') enterEditMode();
     });
 
     el.editorTitle.addEventListener('input', () => {
