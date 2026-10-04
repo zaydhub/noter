@@ -1182,16 +1182,6 @@
       showToast('Note saved');
     });
 
-    el.editorTitle.addEventListener('click', () => {
-      const ed = state.editor;
-      if (ed && ed.mode === 'view') enterEditMode();
-    });
-
-    el.editorContent.addEventListener('click', () => {
-      const ed = state.editor;
-      if (ed && ed.mode === 'view') enterEditMode();
-    });
-
     el.editorTitle.addEventListener('input', () => {
       autoGrowTitle();
       scheduleEditorSave();
