@@ -668,6 +668,22 @@ html[data-theme="dark"] .seg[aria-checked="true"] { background: var(--surface-pr
 .icon-btn--danger { color: var(--danger); }
 .icon-btn--danger[disabled] { opacity: .3; pointer-events: none; }
 
+.text-btn {
+  min-width: 60px;
+  height: 42px;
+  padding: 0 14px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .14s ease, transform .16s var(--ease);
+}
+.text-btn:active { background: var(--accent-soft); transform: scale(.95); }
+
 .editor-body {
   flex: 1 1 auto;
   min-height: 0;
@@ -702,6 +718,18 @@ html[data-theme="dark"] .seg[aria-checked="true"] { background: var(--surface-pr
   -webkit-overflow-scrolling: touch;
 }
 .editor-content::placeholder { color: var(--text-3); }
+
+/* View mode — text is selectable, but the caret is hidden and there
+   is no focus ring to make it obvious the note is read-only. */
+.editor.is-view-mode .editor-title,
+.editor.is-view-mode .editor-content {
+  cursor: text;
+}
+.editor.is-view-mode .editor-title:empty::before,
+.editor.is-view-mode .editor-content:empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-3);
+}
 
 .editor-foot {
   flex: none;
