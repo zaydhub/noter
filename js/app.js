@@ -10,26 +10,21 @@
 
   const el = {
     metaTheme:      $('#meta-theme-color'),
-
     views:          $$('.view'),
     tabbar:         $('#tabbar'),
     tabs:           $$('.tab'),
     fab:            $('#fab'),
-
     greetingTitle:  $('#greeting-title'),
     greetingSub:    $('#greeting-sub'),
-
     homeList:       $('#home-list'),
     searchList:     $('#search-list'),
     favoritesList:  $('#favorites-list'),
     searchInput:    $('#search-input'),
     searchClear:    $('#search-clear'),
     searchHeader:   $('.view-header--search'),
-
     themeSegmented: $('#theme-segmented'),
     categoriesCard: $('#categories-card'),
     storageNote:    $('#storage-note'),
-
     editor:         $('#editor'),
     editorBack:     $('#editor-back'),
     editorMode:     $('#editor-mode'),
@@ -39,22 +34,18 @@
     editorTitle:    $('#editor-title'),
     editorContent:  $('#editor-content'),
     editorCats:     $('#editor-categories'),
-
     sheetBackdrop:  $('#sheet-backdrop'),
     sheetTitle:     $('#sheet-title'),
     sheetActions:   $('#sheet-actions'),
     sheetCancel:    $('#sheet-cancel'),
-
     dialogBackdrop: $('#dialog-backdrop'),
     dialogTitle:    $('#dialog-title'),
     dialogMsg:      $('#dialog-msg'),
     dialogCancel:   $('#dialog-cancel'),
     dialogConfirm:  $('#dialog-confirm'),
-
     toast:          $('#toast'),
     toastMsg:       $('#toast-msg'),
     toastAction:    $('#toast-action'),
-
     importFile:     $('#import-file')
   };
 
@@ -66,7 +57,9 @@
     dialogAction: null,
     toastTimer: null,
     toastActionFn: null,
-    lastFocused: null
+    lastFocused: null,
+    closingEditor: false,
+    suppressClick: false
   };
 
   /* ==========================================================
@@ -90,30 +83,29 @@
 
   const DAY = 86400000;
 
-  function relativeTime(ts) {
-    const now = Date.now();
-    const diff = now - ts;
+  function pad2(n) { return n < 10 ? '0' + n : String(n); }
 
-    if (diff < 45000) return 'Just now';
+  /** "03:24 pm" — lower-case, 12-hour, zero-padded. */
+  function formatTime(ts) {
+    const d = new Date(ts);
+    let h = d.getHours();
+    const m = d.getMinutes();
+    const suffix = h >= 12 ? 'pm' : 'am';
+    h = h % 12; if (h === 0) h = 12;
+    return pad2(h) + ':' + pad2(m) + ' ' + suffix;
+  }
 
-    const mins = Math.floor(diff / 60000);
-    if (mins < 60) return mins + (mins === 1 ? ' minute ago' : ' minutes ago');
-
-    const hours = Math.floor(diff / 3600000);
-    if (hours < 24 && startOfDay(now) === startOfDay(ts)) {
-      return hours + (hours === 1 ? ' hour ago' : ' hours ago');
-    }
-
-    const todayStart = startOfDay(now);
+  /** "Today" / "Yesterday" / "30/09/2026". */
+  function formatDay(ts) {
+    const todayStart = startOfDay(Date.now());
     const noteStart = startOfDay(ts);
-    const dayDiff = Math.round((todayStart - noteStart) / DAY);
+    const diffDays = Math.round((todayStart - noteStart) / DAY);
 
-    if (dayDiff === 1) return 'Yesterday';
-    if (dayDiff < 7) return new Date(ts).toLocaleDateString(undefined, { weekday: 'long' });
-    if (new Date(ts).getFullYear() === new Date(now).getFullYear()) {
-      return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-    }
-    return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    if (diffDays <= 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+
+    const d = new Date(ts);
+    return pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear();
   }
 
   function groupLabel(ts) {
@@ -166,6 +158,8 @@
     const titleText = title ? escapeHtml(title) : 'Empty note';
     const flags = noteFlagsHtml(note);
     const aria = title ? title : 'Empty note';
+    const time = escapeHtml(formatTime(note.updatedAt));
+    const day = escapeHtml(formatDay(note.updatedAt));
 
     return (
       '<li class="note-item" data-id="' + escapeHtml(note.id) + '">' +
@@ -193,7 +187,10 @@
           '</span>' +
           '<span class="note-main">' +
             '<span class="' + titleClass + '">' + titleText + '</span>' +
-            '<span class="note-meta">Updated ' + escapeHtml(relativeTime(note.updatedAt)) + '</span>' +
+            '<span class="note-meta">' +
+              '<span class="note-meta-time">' + time + '</span>' +
+              '<span class="note-meta-day">' + day + '</span>' +
+            '</span>' +
           '</span>' +
           (flags ? '<span class="note-flags">' + flags + '</span>' : '') +
         '</div>' +
@@ -213,10 +210,7 @@
   }
 
   function renderGrouped(container, notes, emptyHtml) {
-    if (!notes.length) {
-      container.innerHTML = emptyHtml;
-      return;
-    }
+    if (!notes.length) { container.innerHTML = emptyHtml; return; }
 
     let html = '';
     let currentGroup = null;
@@ -236,15 +230,11 @@
     }
 
     if (open) html += '</ul></div>';
-
     container.innerHTML = html;
   }
 
   function renderFlat(container, notes, emptyHtml) {
-    if (!notes.length) {
-      container.innerHTML = emptyHtml;
-      return;
-    }
+    if (!notes.length) { container.innerHTML = emptyHtml; return; }
     let html = '<ul class="note-list">';
     for (let i = 0; i < notes.length; i++) html += noteRowHtml(notes[i]);
     html += '</ul>';
@@ -256,10 +246,9 @@
      ========================================================== */
 
   function renderHome() {
-    const notes = NotesStore.sorted();
     renderGrouped(
       el.homeList,
-      notes,
+      NotesStore.sorted(),
       emptyStateHtml('i-home', 'No notes yet', 'Tap + to start writing something.')
     );
   }
@@ -338,10 +327,7 @@
     if (state.view === name) return;
     state.view = name;
 
-    for (const v of el.views) {
-      v.classList.toggle('is-active', v.dataset.view === name);
-    }
-
+    for (const v of el.views) v.classList.toggle('is-active', v.dataset.view === name);
     for (const tab of el.tabs) {
       const active = tab.dataset.tab === name;
       tab.classList.toggle('is-active', active);
@@ -350,13 +336,9 @@
     }
 
     closeSwipe();
-
-    if (name !== 'search' && document.activeElement === el.searchInput) {
-      el.searchInput.blur();
-    }
+    if (name !== 'search' && document.activeElement === el.searchInput) el.searchInput.blur();
 
     el.fab.classList.toggle('is-hidden', name === 'more');
-
     if (name === 'more') renderCategoriesCard();
   }
 
@@ -367,7 +349,6 @@
   const SWIPE_WIDTH = 76;
   const SWIPE_MAX = SWIPE_WIDTH * 2;
   const DRAG_THRESHOLD = 8;
-
   let drag = null;
 
   function cssEscape(value) {
@@ -388,24 +369,18 @@
 
   function onPointerDown(e) {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-
     const face = e.target.closest && e.target.closest('.note-face');
     if (!face) return;
-
     const item = face.closest('.note-item');
     if (!item) return;
 
     drag = {
-      item,
-      face,
+      item, face,
       id: item.dataset.id,
-      startX: e.clientX,
-      startY: e.clientY,
+      startX: e.clientX, startY: e.clientY,
       baseX: item.classList.contains('is-open')
-        ? (item.dataset.openSide === 'right' ? -SWIPE_MAX : SWIPE_WIDTH)
-        : 0,
-      dx: 0,
-      axis: null,
+        ? (item.dataset.openSide === 'right' ? -SWIPE_MAX : SWIPE_WIDTH) : 0,
+      dx: 0, axis: null,
       pointerId: e.pointerId,
       moved: false,
       longPressTimer: setTimeout(() => {
@@ -435,15 +410,12 @@
       if (drag.axis === 'x') {
         drag.item.classList.add('is-dragging');
         if (drag.item.setPointerCapture) {
-          try { drag.item.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+          try { drag.item.setPointerCapture(e.pointerId); } catch (err) {}
         }
-      } else {
-        return;
-      }
+      } else { return; }
     }
 
     if (drag.axis !== 'x') return;
-
     e.preventDefault();
 
     let next = drag.baseX + dx;
@@ -456,7 +428,6 @@
 
   function onPointerUp(e) {
     if (!drag || e.pointerId !== drag.pointerId) return;
-
     clearTimeout(drag.longPressTimer);
     const d = drag;
 
@@ -464,16 +435,9 @@
       const item = d.item;
       item.classList.remove('is-dragging');
 
-      let settle = 0;
-      let side = null;
-
-      if (d.dx >= SWIPE_WIDTH * 0.55) {
-        settle = SWIPE_WIDTH;
-        side = 'left';
-      } else if (d.dx <= -SWIPE_WIDTH * 0.55) {
-        settle = -SWIPE_WIDTH;
-        side = 'right';
-      }
+      let settle = 0, side = null;
+      if (d.dx >= SWIPE_WIDTH * 0.55) { settle = SWIPE_WIDTH; side = 'left'; }
+      else if (d.dx <= -SWIPE_WIDTH * 0.55) { settle = -SWIPE_WIDTH; side = 'right'; }
 
       if (settle === 0) {
         d.face.style.transform = '';
@@ -550,12 +514,10 @@
           item.classList.add('is-removing');
           await new Promise((r) => setTimeout(r, 200));
         }
-
         const snapshot = Object.assign({}, note);
         await NotesStore.remove(id);
         if (state.openSwipeId === id) state.openSwipeId = null;
         renderAll();
-
         showToast('Note deleted', 'Undo', async () => {
           await NotesStore.upsert(snapshot);
           renderAll();
@@ -636,12 +598,10 @@
     if (!note) return;
 
     state.sheetNoteId = id;
-    const title = NotesStore.displayTitle(note) || 'Empty note';
-    el.sheetTitle.textContent = title;
+    el.sheetTitle.textContent = NotesStore.displayTitle(note) || 'Empty note';
 
     const cats = Settings.getCategories();
     let html = '';
-
     html += sheetBtn('pin', note.pinned ? 'Unpin note' : 'Pin to top', 'i-pin', false);
     html += sheetBtn('fav', note.favorite ? 'Remove from favorites' : 'Add to favorites', 'i-star', false);
 
@@ -660,7 +620,6 @@
     }
 
     html += sheetBtn('delete', 'Delete note', 'i-trash', true);
-
     el.sheetActions.innerHTML = html;
     el.sheetBackdrop.hidden = false;
     pushOverlayHistory('sheet');
@@ -704,7 +663,6 @@
     el.editorPin.setAttribute('aria-label', note.pinned ? 'Unpin note' : 'Pin note');
     el.editorFav.setAttribute('aria-pressed', note.favorite ? 'true' : 'false');
     el.editorFav.setAttribute('aria-label', note.favorite ? 'Remove from favorites' : 'Mark as favorite');
-
     el.editorDelete.disabled = state.editor.isNew;
 
     const chips = $$('.chip', el.editorCats);
@@ -717,11 +675,9 @@
     const ed = state.editor;
     if (!ed) return;
     const isEdit = ed.mode === 'edit';
-
     el.editorTitle.readOnly = !isEdit;
     el.editorContent.readOnly = !isEdit;
     el.editor.classList.toggle('is-view-mode', !isEdit);
-
     el.editorMode.textContent = isEdit ? 'Done' : 'Edit';
     el.editorMode.setAttribute('aria-label', isEdit ? 'Save note' : 'Edit note');
   }
@@ -755,9 +711,7 @@
   function openEditor(id) {
     if (state.editor) return;
 
-    let note;
-    let isNew = false;
-
+    let note, isNew = false;
     if (id) {
       const existing = NotesStore.get(id);
       if (!existing) return;
@@ -767,13 +721,7 @@
       isNew = true;
     }
 
-    state.editor = {
-      note,
-      isNew,
-      timer: null,
-      dirty: false,
-      mode: isNew ? 'edit' : 'view'
-    };
+    state.editor = { note, isNew, timer: null, dirty: false, mode: isNew ? 'edit' : 'view' };
     state.lastFocused = document.activeElement;
 
     el.editorTitle.value = note.title;
@@ -823,9 +771,7 @@
         renderAll();
         showToast('Empty note removed', 'Undo', async () => {
           await NotesStore.upsert(snapshot);
-          if (state.editor && state.editor.note.id === snapshot.id) {
-            state.editor.isNew = false;
-          }
+          if (state.editor && state.editor.note.id === snapshot.id) state.editor.isNew = false;
           renderAll();
         });
       }
@@ -840,11 +786,13 @@
   }
 
   async function closeEditor() {
+    if (state.closingEditor) return;
     const ed = state.editor;
     if (!ed) return;
 
+    state.closingEditor = true;
     clearTimeout(ed.timer);
-    await flushEditorSave();
+    try { await flushEditorSave(); } catch (e) {}
 
     el.editor.classList.add('is-closing');
 
@@ -858,15 +806,14 @@
     el.editor.classList.remove('is-closing');
     el.editor.hidden = true;
     state.editor = null;
-
     el.fab.classList.toggle('is-hidden', state.view === 'more');
-
     renderAll();
 
     if (state.lastFocused && document.contains(state.lastFocused)) {
-      try { state.lastFocused.focus({ preventScroll: true }); } catch (e) { /* ignore */ }
+      try { state.lastFocused.focus({ preventScroll: true }); } catch (e) {}
     }
     state.lastFocused = null;
+    state.closingEditor = false;
   }
 
   function editorDeleteFlow() {
@@ -901,7 +848,7 @@
 
   function pushOverlayHistory(kind) {
     overlayStack.push(kind);
-    try { history.pushState({ noter: kind, depth: overlayStack.length }, ''); } catch (e) { /* ignore */ }
+    try { history.pushState({ noter: kind, depth: overlayStack.length }, ''); } catch (e) {}
   }
 
   function popOverlayHistory() {
@@ -923,10 +870,9 @@
 
     if (state.view !== 'home') {
       switchView('home');
-      try { history.pushState({ noter: 'home' }, ''); } catch (e) { /* ignore */ }
+      try { history.pushState({ noter: 'home' }, ''); } catch (e) {}
       return true;
     }
-
     return false;
   }
 
@@ -935,7 +881,7 @@
       handleBack();
     } else if (state.view !== 'home') {
       switchView('home');
-      try { history.replaceState({ noter: 'home' }, ''); } catch (e) { /* ignore */ }
+      try { history.replaceState({ noter: 'home' }, ''); } catch (e) {}
     }
   });
 
@@ -946,8 +892,7 @@
   async function exportBackup() {
     try {
       const payload = {
-        app: 'noter',
-        version: 1,
+        app: 'noter', version: 1,
         exportedAt: new Date().toISOString(),
         notes: NotesStore.sorted(),
         settings: Settings.snapshot()
@@ -976,7 +921,6 @@
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 4000);
-
       showToast('Backup exported (' + payload.notes.length + ' notes)');
     } catch (err) {
       showToast('Export failed');
@@ -993,39 +937,21 @@
 
     let data;
     try {
-      const text = await file.text();
-      data = JSON.parse(text);
+      data = JSON.parse(await file.text());
     } catch (err) {
-      requestConfirm({
-        title: 'Import failed',
-        message: 'That file could not be read as a Noter backup.',
-        confirmLabel: 'OK',
-        onConfirm: null
-      });
+      requestConfirm({ title: 'Import failed', message: 'That file could not be read as a Noter backup.', confirmLabel: 'OK', onConfirm: null });
       return;
     }
 
     const notes = Array.isArray(data) ? data : (data && Array.isArray(data.notes) ? data.notes : null);
-
     if (!notes) {
-      requestConfirm({
-        title: 'Import failed',
-        message: 'No notes were found in that file.',
-        confirmLabel: 'OK',
-        onConfirm: null
-      });
+      requestConfirm({ title: 'Import failed', message: 'No notes were found in that file.', confirmLabel: 'OK', onConfirm: null });
       return;
     }
 
     const clean = notes.filter((n) => n && typeof n === 'object');
-
     if (!clean.length) {
-      requestConfirm({
-        title: 'Nothing to import',
-        message: 'That backup does not contain any notes.',
-        confirmLabel: 'OK',
-        onConfirm: null
-      });
+      requestConfirm({ title: 'Nothing to import', message: 'That backup does not contain any notes.', confirmLabel: 'OK', onConfirm: null });
       return;
     }
 
@@ -1036,9 +962,7 @@
       onConfirm: async () => {
         try {
           const result = await NotesStore.merge(clean);
-
           if (data && data.settings) Settings.restore(data.settings);
-
           renderAll();
           syncThemeUI();
 
@@ -1046,7 +970,6 @@
           if (result.added) parts.push(result.added + ' added');
           if (result.updated) parts.push(result.updated + ' updated');
           if (result.skipped) parts.push(result.skipped + ' kept');
-
           showToast(parts.length ? 'Imported: ' + parts.join(', ') : 'Nothing new to import');
         } catch (err) {
           showToast('Import failed');
@@ -1073,11 +996,7 @@
 
   function handleListClick(e) {
     const item = e.target.closest ? e.target.closest('.note-item') : null;
-    if (!item) {
-      closeSwipe();
-      return;
-    }
-
+    if (!item) { closeSwipe(); return; }
     const id = item.dataset.id;
 
     const swipeBtn = e.target.closest('.swipe-btn');
@@ -1113,7 +1032,7 @@
       const name = tab.dataset.tab;
       if (!name || name === state.view) return;
       switchView(name);
-      try { history.pushState({ noter: 'view', view: name }, ''); } catch (err) { /* ignore */ }
+      try { history.pushState({ noter: 'view', view: name }, ''); } catch (err) {}
     });
 
     el.fab.addEventListener('click', () => openEditor(null));
@@ -1137,10 +1056,7 @@
     let searchRaf = 0;
     el.searchInput.addEventListener('input', () => {
       if (searchRaf) return;
-      searchRaf = requestAnimationFrame(() => {
-        searchRaf = 0;
-        renderSearch();
-      });
+      searchRaf = requestAnimationFrame(() => { searchRaf = 0; renderSearch(); });
     });
 
     el.searchClear.addEventListener('click', () => {
@@ -1154,42 +1070,34 @@
       el.searchHeader.classList.toggle('is-scrolled', searchView.scrollTop > 2);
     }, { passive: true });
 
-    el.editorBack.addEventListener('click', () => {
-      if (overlayStack[overlayStack.length - 1] === 'editor') {
-        history.back();
-      } else {
-        closeEditor();
-      }
+    // Back button — single-tap. No history.back() indirection.
+    el.editorBack.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      // Pop our synthetic history entry directly, then close.
+      // Using replaceState avoids firing popstate which would double-close.
+      try {
+        if (overlayStack[overlayStack.length - 1] === 'editor') {
+          overlayStack.pop();
+          history.replaceState({ noter: 'view' }, '');
+        }
+      } catch (err) {}
+      closeEditor();
     });
 
     el.editorMode.addEventListener('click', async () => {
       const ed = state.editor;
       if (!ed) return;
-
-      if (ed.mode === 'view') {
-        enterEditMode();
-        return;
-      }
-
+      if (ed.mode === 'view') { enterEditMode(); return; }
       await flushEditorSave();
-
       const current = state.editor;
       if (!current) return;
-
-      if (current.isNew) {
-        closeEditor();
-        return;
-      }
-
+      if (current.isNew) { closeEditor(); return; }
       exitEditMode();
       showToast('Note saved');
     });
 
-    el.editorTitle.addEventListener('input', () => {
-      autoGrowTitle();
-      scheduleEditorSave();
-    });
-
+    el.editorTitle.addEventListener('input', () => { autoGrowTitle(); scheduleEditorSave(); });
     el.editorContent.addEventListener('input', scheduleEditorSave);
 
     el.editorPin.addEventListener('click', () => {
@@ -1242,14 +1150,12 @@
       if (!id) return;
 
       if (action === 'cat') {
-        const catId = btn.dataset.cat;
-        await setCategory(id, catId);
+        await setCategory(id, btn.dataset.cat);
         closeSheet();
         return;
       }
 
       closeSheet();
-
       if (action === 'pin') await togglePin(id);
       else if (action === 'fav') await toggleFavorite(id);
       else if (action === 'delete') deleteNote(id);
@@ -1301,9 +1207,7 @@
     });
 
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden' && state.editor) {
-        flushEditorSave();
-      }
+      if (document.visibilityState === 'hidden' && state.editor) flushEditorSave();
     });
 
     global.addEventListener('pagehide', () => {
@@ -1347,7 +1251,7 @@
     try {
       history.replaceState({ noter: 'home' }, '');
       history.pushState({ noter: 'home' }, '');
-    } catch (e) { /* ignore */ }
+    } catch (e) {}
 
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && !state.editor) {
@@ -1358,7 +1262,7 @@
 
     if ('serviceWorker' in navigator) {
       global.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch(() => { /* offline is best-effort */ });
+        navigator.serviceWorker.register('sw.js').catch(() => {});
       });
     }
   }
