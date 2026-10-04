@@ -293,7 +293,6 @@ html[data-theme="dark"] .note-item { border: 1px solid var(--border); }
 }
 .note-title--empty { color: var(--text-3); font-weight: 500; }
 
-/* NEW: two-column meta row (time on the left, day on the right) */
 .note-meta {
   margin-top: 3px;
   display: flex;
@@ -512,7 +511,6 @@ html[data-theme="dark"] .seg[aria-checked="true"] { background: var(--surface-pr
 @keyframes editorIn { from { opacity: 0; transform: translateY(14px) scale(.995); } to { opacity: 1; transform: none; } }
 @keyframes editorOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(10px) scale(.995); } }
 
-/* Tighter, more clustered toolbar */
 .editor-bar {
   flex: none;
   display: flex;
@@ -533,7 +531,6 @@ html[data-theme="dark"] .seg[aria-checked="true"] { background: var(--surface-pr
   border-bottom: 1px solid var(--border);
 }
 
-/* Buttons: uniform 40x40 hit targets, no wasted gap */
 .icon-btn {
   width: 40px; height: 40px;
   display: grid; place-items: center;
@@ -754,7 +751,8 @@ html[data-theme="dark"] .seg[aria-checked="true"] { background: var(--surface-pr
 .dialog-btn--danger { background: var(--danger); color: #fff; }
 
 /* ============================================================
-   TOAST
+   TOAST  (symmetric padding so short messages stay centered;
+          the optional Undo action sits inline on the right)
    ============================================================ */
 .toast {
   position: fixed;
@@ -763,9 +761,10 @@ html[data-theme="dark"] .seg[aria-checked="true"] { background: var(--surface-pr
   z-index: 90;
   display: flex;
   align-items: center;
-  gap: 14px;
+  justify-content: center;
+  gap: 10px;
   max-width: calc(100vw - 32px);
-  padding: 12px 10px 12px 18px;
+  padding: 12px 18px;
   border-radius: 14px;
   background: rgba(28,28,30,.95);
   color: #fff;
@@ -778,10 +777,11 @@ html[data-theme="dark"] .seg[aria-checked="true"] { background: var(--surface-pr
 html[data-theme="dark"] .toast { background: rgba(58,58,60,.97); border: 1px solid var(--border); }
 .toast[hidden] { display: none; }
 @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
-.toast-msg { flex: 1 1 auto; }
+.toast-msg { flex: 0 1 auto; }
 .toast-action {
   flex: none;
   padding: 6px 12px;
+  margin-right: -6px;
   border-radius: 9px;
   font-size: 14.5px;
   font-weight: 650;
