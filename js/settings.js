@@ -11,14 +11,14 @@
   const THEMES = ['light', 'dark', 'system'];
 
   const DEFAULT_CATEGORIES = [
-    { id: 'thought',   name: 'Thought',   emoji: '💭' },
-    { id: 'idea',      name: 'Idea',      emoji: '💡' },
-    { id: 'work',      name: 'Work',      emoji: '💼' },
-    { id: 'shopping',  name: 'Shopping',  emoji: '🛒' },
-    { id: 'important', name: 'Important', emoji: '❗' },
-    { id: 'todo',      name: 'To-do',     emoji: '✅' },
-    { id: 'study',     name: 'Study',     emoji: '📚' },
-    { id: 'other',     name: 'Other',     emoji: '📝' }
+    { id: 'thought',   name: 'Thought',   icon: 'c-thought'   },
+    { id: 'idea',      name: 'Idea',      icon: 'c-idea'      },
+    { id: 'work',      name: 'Work',      icon: 'c-work'      },
+    { id: 'shopping',  name: 'Shopping',  icon: 'c-shopping'  },
+    { id: 'important', name: 'Important', icon: 'c-important' },
+    { id: 'todo',      name: 'To-do',     icon: 'c-todo'      },
+    { id: 'study',     name: 'Study',     icon: 'c-study'     },
+    { id: 'other',     name: 'Other',     icon: 'c-other'     }
   ];
 
   const FALLBACK_CATEGORY = DEFAULT_CATEGORIES[DEFAULT_CATEGORIES.length - 1];
@@ -36,6 +36,16 @@
 
   function write(key, value) {
     try { localStorage.setItem(key, value); } catch (e) { /* quota / private mode */ }
+  }
+
+  /** Ensure a stored category always has the fields the UI needs. */
+  function normalizeCategory(c) {
+    if (!c || typeof c.id !== 'string' || typeof c.name !== 'string') return null;
+    const fallback = DEFAULT_CATEGORIES.find((d) => d.id === c.id);
+    const icon = (typeof c.icon === 'string' && c.icon)
+      ? c.icon
+      : (fallback ? fallback.icon : 'c-other');
+    return { id: c.id, name: c.name, icon };
   }
 
   /* ---------- Theme ---------- */
@@ -74,7 +84,6 @@
     return () => listeners.delete(fn);
   }
 
-  // Follow the OS while the preference is "system".
   const onSystemChange = () => { if (getTheme() === 'system') applyTheme(); };
   if (mql.addEventListener) mql.addEventListener('change', onSystemChange);
   else if (mql.addListener) mql.addListener(onSystemChange);
@@ -87,9 +96,7 @@
       try {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length) {
-          const clean = parsed.filter(
-            (c) => c && typeof c.id === 'string' && typeof c.name === 'string'
-          );
+          const clean = parsed.map(normalizeCategory).filter(Boolean);
           if (clean.length) return clean;
         }
       } catch (e) { /* fall through to defaults */ }
@@ -103,7 +110,9 @@
 
   function setCategories(list) {
     if (!Array.isArray(list) || !list.length) return;
-    write(KEY_CATS, JSON.stringify(list));
+    const clean = list.map(normalizeCategory).filter(Boolean);
+    if (!clean.length) return;
+    write(KEY_CATS, JSON.stringify(clean));
   }
 
   /* ---------- Export / import helper ---------- */
