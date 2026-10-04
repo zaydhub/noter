@@ -58,8 +58,7 @@
     toastTimer: null,
     toastActionFn: null,
     lastFocused: null,
-    closingEditor: false,
-    suppressClick: false
+    closingEditor: false
   };
 
   /* ==========================================================
@@ -85,7 +84,6 @@
 
   function pad2(n) { return n < 10 ? '0' + n : String(n); }
 
-  /** "03:24 pm" — lower-case, 12-hour, zero-padded. */
   function formatTime(ts) {
     const d = new Date(ts);
     let h = d.getHours();
@@ -95,15 +93,12 @@
     return pad2(h) + ':' + pad2(m) + ' ' + suffix;
   }
 
-  /** "Today" / "Yesterday" / "30/09/2026". */
   function formatDay(ts) {
     const todayStart = startOfDay(Date.now());
     const noteStart = startOfDay(ts);
     const diffDays = Math.round((todayStart - noteStart) / DAY);
-
     if (diffDays <= 0) return 'Today';
     if (diffDays === 1) return 'Yesterday';
-
     const d = new Date(ts);
     return pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear();
   }
@@ -337,7 +332,6 @@
 
     closeSwipe();
     if (name !== 'search' && document.activeElement === el.searchInput) el.searchInput.blur();
-
     el.fab.classList.toggle('is-hidden', name === 'more');
     if (name === 'more') renderCategoriesCard();
   }
@@ -395,7 +389,6 @@
 
   function onPointerMove(e) {
     if (!drag || e.pointerId !== drag.pointerId) return;
-
     const dx = e.clientX - drag.startX;
     const dy = e.clientY - drag.startY;
 
@@ -452,7 +445,6 @@
         state.openSwipeId = d.id;
       }
     }
-
     resetDrag();
   }
 
@@ -562,7 +554,6 @@
     el.dialogMsg.textContent = opts.message || '';
     el.dialogConfirm.textContent = opts.confirmLabel || 'Confirm';
     state.dialogAction = opts.onConfirm || null;
-
     el.dialogBackdrop.hidden = false;
     el.dialogConfirm.focus({ preventScroll: true });
     pushOverlayHistory('dialog');
@@ -736,7 +727,13 @@
 
     requestAnimationFrame(() => {
       autoGrowTitle();
-      if (state.editor && state.editor.mode === 'edit') {
+      if (!state.editor || state.editor.mode !== 'edit') return;
+
+      // New note → cursor starts in the title so you can type it first.
+      // Existing note that just entered edit mode → cursor in the content.
+      if (state.editor.isNew) {
+        el.editorTitle.focus({ preventScroll: true });
+      } else {
         el.editorContent.focus({ preventScroll: true });
       }
     });
@@ -1070,12 +1067,9 @@
       el.searchHeader.classList.toggle('is-scrolled', searchView.scrollTop > 2);
     }, { passive: true });
 
-    // Back button — single-tap. No history.back() indirection.
     el.editorBack.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      // Pop our synthetic history entry directly, then close.
-      // Using replaceState avoids firing popstate which would double-close.
       try {
         if (overlayStack[overlayStack.length - 1] === 'editor') {
           overlayStack.pop();
