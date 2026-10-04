@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Noter</title>
+<meta name="description" content="Noter — a fast, offline-first personal notes app.">
+<meta name="theme-color" content="#f5f5f7" id="meta-theme-color">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Noter">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+<link rel="apple-touch-icon" href="icons/icon.svg">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.2 12 3l9 7.2V20a1.5 1.5 0 0 1-1.5 1.5h-4.2v-6h-6.6v6H4.5A1.5 1.5 0 0 1 3 20z"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.6l2.55 5.4 5.9.78-4.32 4.1 1.1 5.86L12 16.9l-5.23 2.84 1.1-5.86-4.32-4.1 5.9-.78z"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M14.5 3.5 20.5 9.5l-2.1 1.1a4 4 0 0 0-1.8 5.3l-.9.9-3.2-3.2-4.9 4.9-1.1-1.1 4.9-4.9-3.2-3.2.9-.9a4 4 0 0 0 5.3-1.8z"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9.5 7V5.2A1.2 1.2 0 0 1 10.7 4h2.6a1.2 1.2 0 0 1 1.2 1.2V7M6.5 7l.9 12.1A1.5 1.5 0 0 0 8.9 20.5h6.2a1.5 1.5 0 0 0 1.5-1.4L17.5 7"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.2 8.2 0 0 1 9.5 4 8.4 8.4 0 1 0 20 14.5z"/></symbol>
+    <symbol id="i-auto" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3.5v11M7.5 10.5 12 15l4.5-4.5M4.5 19.5h15"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M4.5 19.5h15"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path d="M4 11.2V5a1 1 0 0 1 1-1h6.2a1 1 0 0 1 .7.3l7.8 7.8a1 1 0 0 1 0 1.4l-6.2 6.2a1 1 0 0 1-1.4 0l-7.8-7.8a1 1 0 0 1-.3-.7z"/><circle cx="8" cy="8" r="1.2" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.8" r=".9" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3.8 21 20H3z"/><path d="M12 9.5v4.2"/><circle cx="12" cy="16.6" r=".9" fill="currentColor" stroke="none"/></symbol>
+  </defs>
+</svg>
+
+<div class="app">
+
+  <main class="views" id="views">
+
+    <section class="view is-active" id="view-home" data-view="home" aria-label="Home">
+      <header class="view-header view-header--title">
+        <h1 class="greeting" id="greeting-title">Good morning</h1>
+        <p class="greeting-sub" id="greeting-sub">What’s on your mind?</p>
+      </header>
+      <div id="home-list" class="list-root"></div>
+    </section>
+
+    <section class="view" id="view-search" data-view="search" aria-label="Search">
+      <header class="view-header view-header--search">
+        <div class="search-field">
+          <svg class="ico ico-20 search-ico" aria-hidden="true"><use href="#i-search"/></svg>
+          <input id="search-input" type="text" placeholder="Search notes" aria-label="Search notes"
+                 autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search">
+          <button class="search-clear" id="search-clear" type="button" aria-label="Clear search" hidden>
+            <svg class="ico ico-16" aria-hidden="true"><use href="#i-close"/></svg>
+          </button>
+        </div>
+      </header>
+      <div id="search-list" class="list-root"></div>
+    </section>
+
+    <section class="view" id="view-favorites" data-view="favorites" aria-label="Favorites">
+      <header class="view-header view-header--title">
+        <h1 class="page-title">Favorites</h1>
+      </header>
+      <div id="favorites-list" class="list-root"></div>
+    </section>
+
+    <section class="view" id="view-more" data-view="more" aria-label="More">
+      <header class="view-header view-header--title">
+        <h1 class="page-title">More</h1>
+      </header>
+
+      <div class="section">
+        <h2 class="section-title">Appearance</h2>
+        <div class="card">
+          <div class="segmented" id="theme-segmented" role="radiogroup" aria-label="Appearance">
+            <button type="button" class="seg" data-theme-opt="light" role="radio" aria-checked="false">
+              <svg class="ico ico-18" aria-hidden="true"><use href="#i-sun"/></svg><span>Light</span>
+            </button>
+            <button type="button" class="seg" data-theme-opt="dark" role="radio" aria-checked="false">
+              <svg class="ico ico-18" aria-hidden="true"><use href="#i-moon"/></svg><span>Dark</span>
+            </button>
+            <button type="button" class="seg" data-theme-opt="system" role="radio" aria-checked="true">
+              <svg class="ico ico-18" aria-hidden="true"><use href="#i-auto"/></svg><span>System</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2 class="section-title">Data</h2>
+        <div class="card">
+          <button type="button" class="row-btn" data-action="export">
+            <span class="row-ico"><svg class="ico ico-20" aria-hidden="true"><use href="#i-download"/></svg></span>
+            <span class="row-label">Backup &amp; Export</span>
+            <svg class="ico ico-18 row-chev" aria-hidden="true"><use href="#i-chevron"/></svg>
+          </button>
+          <div class="row-sep"></div>
+          <button type="button" class="row-btn" data-action="import">
+            <span class="row-ico"><svg class="ico ico-20" aria-hidden="true"><use href="#i-upload"/></svg></span>
+            <span class="row-label">Import backup</span>
+            <svg class="ico ico-18 row-chev" aria-hidden="true"><use href="#i-chevron"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2 class="section-title">Categories</h2>
+        <div class="card" id="categories-card"></div>
+      </div>
+
+      <div class="section">
+        <h2 class="section-title">About</h2>
+        <div class="card">
+          <div class="about">
+            <div class="about-mark" aria-hidden="true">
+              <svg viewBox="0 0 512 512" class="about-mark-svg"><use href="#i-check"/></svg>
+            </div>
+            <div class="about-text">
+              <p class="about-name">Noter</p>
+              <p class="about-meta">Version 1.0 · Offline-first</p>
+            </div>
+          </div>
+          <div class="row-sep"></div>
+          <p class="about-note">
+            All notes are stored only on this device. Nothing is uploaded, tracked, or shared.
+            Export a backup regularly if your notes matter to you.
+          </p>
+        </div>
+      </div>
+
+      <p class="footer-note" id="storage-note"></p>
+    </section>
+
+  </main>
+
+  <button type="button" class="fab" id="fab" aria-label="Create new note">
+    <svg class="ico ico-26" aria-hidden="true"><use href="#i-plus"/></svg>
+  </button>
+
+  <nav class="tabbar" id="tabbar" aria-label="Main navigation">
+    <button type="button" class="tab is-active" data-tab="home" aria-current="page">
+      <svg class="ico ico-22" aria-hidden="true"><use href="#i-home"/></svg><span>Home</span>
+    </button>
+    <button type="button" class="tab" data-tab="search">
+      <svg class="ico ico-22" aria-hidden="true"><use href="#i-search"/></svg><span>Search</span>
+    </button>
+    <button type="button" class="tab" data-tab="favorites">
+      <svg class="ico ico-22" aria-hidden="true"><use href="#i-star"/></svg><span>Favorites</span>
+    </button>
+    <button type="button" class="tab" data-tab="more">
+      <svg class="ico ico-22" aria-hidden="true"><use href="#i-more"/></svg><span>More</span>
+    </button>
+  </nav>
+
+  <div class="editor" id="editor" role="dialog" aria-modal="true" aria-label="Note editor" hidden>
+    <header class="editor-bar">
+      <button type="button" class="icon-btn" id="editor-back" aria-label="Save and close">
+        <svg class="ico ico-22" aria-hidden="true"><use href="#i-back"/></svg>
+      </button>
+      <div class="editor-bar-actions">
+        <button type="button" class="icon-btn" id="editor-pin" aria-label="Pin note" aria-pressed="false">
+          <svg class="ico ico-20" aria-hidden="true"><use href="#i-pin"/></svg>
+        </button>
+        <button type="button" class="icon-btn" id="editor-fav" aria-label="Mark as favorite" aria-pressed="false">
+          <svg class="ico ico-20" aria-hidden="true"><use href="#i-star"/></svg>
+        </button>
+        <button type="button" class="icon-btn icon-btn--danger" id="editor-delete" aria-label="Delete note">
+          <svg class="ico ico-20" aria-hidden="true"><use href="#i-trash"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="editor-body">
+      <textarea class="editor-title" id="editor-title" placeholder="Title" aria-label="Note title"
+                rows="1" autocomplete="off" spellcheck="true"></textarea>
+      <textarea class="editor-content" id="editor-content" placeholder="Start writing…" aria-label="Note content"
+                autocomplete="off" spellcheck="true"></textarea>
+    </div>
+
+    <div class="editor-foot">
+      <div class="cat-scroller" id="editor-categories" role="radiogroup" aria-label="Category"></div>
+    </div>
+  </div>
+
+  <div class="sheet-backdrop" id="sheet-backdrop" hidden>
+    <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Note actions">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-title" id="sheet-title"></div>
+      <div class="sheet-actions" id="sheet-actions"></div>
+      <button type="button" class="sheet-cancel" id="sheet-cancel">Cancel</button>
+    </div>
+  </div>
+
+  <div class="dialog-backdrop" id="dialog-backdrop" hidden>
+    <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dialog-title" aria-describedby="dialog-msg">
+      <h2 class="dialog-title" id="dialog-title">Delete this note?</h2>
+      <p class="dialog-msg" id="dialog-msg">This can be undone right after.</p>
+      <div class="dialog-actions">
+        <button type="button" class="dialog-btn" id="dialog-cancel">Cancel</button>
+        <button type="button" class="dialog-btn dialog-btn--danger" id="dialog-confirm">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden>
+    <span class="toast-msg" id="toast-msg"></span>
+    <button type="button" class="toast-action" id="toast-action" hidden></button>
+  </div>
+
+  <input type="file" id="import-file" accept="application/json,.json" hidden>
+</div>
+
+<script src="js/db.js"></script>
+<script src="js/settings.js"></script>
+<script src="js/notes.js"></script>
+<script src="js/search.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
