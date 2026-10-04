@@ -188,7 +188,9 @@
           '</div>' +
         '</div>' +
         '<div class="note-face" role="button" tabindex="0" aria-label="' + escapeHtml(aria) + '">' +
-          '<span class="note-emoji" aria-hidden="true">' + escapeHtml(cat.emoji) + '</span>' +
+          '<span class="note-icon" aria-hidden="true">' +
+            '<svg class="ico"><use href="#' + escapeHtml(cat.icon) + '"/></svg>' +
+          '</span>' +
           '<span class="note-main">' +
             '<span class="' + titleClass + '">' + titleText + '</span>' +
             '<span class="note-meta">Updated ' + escapeHtml(relativeTime(note.updatedAt)) + '</span>' +
@@ -303,7 +305,9 @@
       if (i > 0) html += '<div class="row-sep"></div>';
       html += (
         '<div class="cat-row">' +
-          '<span class="cat-row-emoji" aria-hidden="true">' + escapeHtml(c.emoji) + '</span>' +
+          '<span class="cat-row-icon" aria-hidden="true">' +
+            '<svg class="ico"><use href="#' + escapeHtml(c.icon) + '"/></svg>' +
+          '</span>' +
           '<span class="cat-row-name">' + escapeHtml(c.name) + '</span>' +
           '<span class="cat-row-count">' + (counts[c.id] || 0) + '</span>' +
         '</div>'
@@ -646,8 +650,7 @@
       html += (
         '<button type="button" class="sheet-btn" data-sheet="cat" data-cat="' + escapeHtml(c.id) + '" ' +
                 'role="menuitemradio" aria-checked="' + (checked ? 'true' : 'false') + '">' +
-          '<span style="width:22px;text-align:center;font-size:16px" aria-hidden="true">' +
-            escapeHtml(c.emoji) + '</span>' +
+          '<svg class="ico sheet-cat-icon" aria-hidden="true"><use href="#' + escapeHtml(c.icon) + '"/></svg>' +
           '<span style="flex:1">' + escapeHtml(c.name) + '</span>' +
           (checked
             ? '<svg class="ico ico-18" viewBox="0 0 24 24" style="color:var(--accent)"><use href="#i-check"/></svg>'
@@ -685,7 +688,7 @@
       html += (
         '<button type="button" class="chip" role="radio" data-cat="' + escapeHtml(c.id) + '" ' +
                 'aria-checked="' + (checked ? 'true' : 'false') + '">' +
-          '<span class="chip-emoji" aria-hidden="true">' + escapeHtml(c.emoji) + '</span>' +
+          '<svg class="ico chip-icon" aria-hidden="true"><use href="#' + escapeHtml(c.icon) + '"/></svg>' +
           '<span>' + escapeHtml(c.name) + '</span>' +
         '</button>'
       );
