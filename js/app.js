@@ -346,9 +346,7 @@
 
     closeSwipe();
 
-    if (name === 'search') {
-      requestAnimationFrame(() => el.searchInput.focus({ preventScroll: true }));
-    } else if (document.activeElement === el.searchInput) {
+    if (name !== 'search' && document.activeElement === el.searchInput) {
       el.searchInput.blur();
     }
 
