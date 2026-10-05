@@ -1,14 +1,51 @@
 /* ============================================================
-   Noter — settings (theme + categories)
-   Preferences are small and non-critical, so localStorage is
-   the right tool here. Notes themselves live in IndexedDB.
+   Noter — settings (theme, accent, categories)
    ============================================================ */
 (function (global) {
   'use strict';
 
-  const KEY_THEME = 'noter.theme';
-  const KEY_CATS  = 'noter.categories';
+  const KEY_THEME  = 'noter.theme';
+  const KEY_ACCENT = 'noter.accent';
+  const KEY_CATS   = 'noter.categories';
   const THEMES = ['light', 'dark', 'system'];
+
+  /**
+   * Curated accent palette. Each entry has a light-mode colour and
+   * a dark-mode colour, plus the ink colour to draw on top of the
+   * accent (for buttons like the FAB). Every combination is picked
+   * for reasonable contrast in both themes.
+   */
+  const PALETTE = [
+    { id: 'orange', name: 'Orange',
+      light: { bg: '#ff9500', ink: '#ffffff' },
+      dark:  { bg: '#ffb340', ink: '#1c1c1e' } },
+    { id: 'blue',   name: 'Blue',
+      light: { bg: '#007aff', ink: '#ffffff' },
+      dark:  { bg: '#0a84ff', ink: '#ffffff' } },
+    { id: 'indigo', name: 'Indigo',
+      light: { bg: '#5856d6', ink: '#ffffff' },
+      dark:  { bg: '#5e5ce6', ink: '#ffffff' } },
+    { id: 'purple', name: 'Purple',
+      light: { bg: '#af52de', ink: '#ffffff' },
+      dark:  { bg: '#bf5af2', ink: '#1c1c1e' } },
+    { id: 'pink',   name: 'Pink',
+      light: { bg: '#ff2d55', ink: '#ffffff' },
+      dark:  { bg: '#ff6482', ink: '#1c1c1e' } },
+    { id: 'red',    name: 'Red',
+      light: { bg: '#ff3b30', ink: '#ffffff' },
+      dark:  { bg: '#ff453a', ink: '#ffffff' } },
+    { id: 'yellow', name: 'Yellow',
+      light: { bg: '#ffcc00', ink: '#1c1c1e' },
+      dark:  { bg: '#ffd60a', ink: '#1c1c1e' } },
+    { id: 'green',  name: 'Green',
+      light: { bg: '#34c759', ink: '#ffffff' },
+      dark:  { bg: '#30d158', ink: '#1c1c1e' } },
+    { id: 'teal',   name: 'Teal',
+      light: { bg: '#30b0c7', ink: '#ffffff' },
+      dark:  { bg: '#40cbe0', ink: '#1c1c1e' } }
+  ];
+
+  const DEFAULT_ACCENT = 'orange';
 
   const DEFAULT_CATEGORIES = [
     { id: 'thought',   name: 'Thought',   icon: 'c-thought'   },
@@ -29,16 +66,13 @@
     try {
       const v = localStorage.getItem(key);
       return v === null ? fallback : v;
-    } catch (e) {
-      return fallback;
-    }
+    } catch (e) { return fallback; }
   }
 
   function write(key, value) {
-    try { localStorage.setItem(key, value); } catch (e) { /* quota / private mode */ }
+    try { localStorage.setItem(key, value); } catch (e) { /* ignore */ }
   }
 
-  /** Ensure a stored category always has the fields the UI needs. */
   function normalizeCategory(c) {
     if (!c || typeof c.id !== 'string' || typeof c.name !== 'string') return null;
     const fallback = DEFAULT_CATEGORIES.find((d) => d.id === c.id);
@@ -46,6 +80,10 @@
       ? c.icon
       : (fallback ? fallback.icon : 'c-other');
     return { id: c.id, name: c.name, icon };
+  }
+
+  function findAccent(id) {
+    return PALETTE.find((p) => p.id === id) || PALETTE[0];
   }
 
   /* ---------- Theme ---------- */
@@ -61,12 +99,55 @@
     return t;
   }
 
+  /* ---------- Accent ---------- */
+
+  function getAccent() {
+    const v = read(KEY_ACCENT, DEFAULT_ACCENT);
+    return PALETTE.some((p) => p.id === v) ? v : DEFAULT_ACCENT;
+  }
+
+  function hexToRgb(hex) {
+    const h = hex.replace('#', '');
+    const n = parseInt(h.length === 3
+      ? h.split('').map((c) => c + c).join('')
+      : h, 16);
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  }
+
+  /**
+   * Push the current accent into CSS custom properties on <html>.
+   * Called on boot and every time theme or accent changes.
+   */
+  function applyAccent() {
+    const resolved = resolvedTheme();
+    const accent = findAccent(getAccent());
+    const mode = resolved === 'dark' ? accent.dark : accent.light;
+    const rgb = hexToRgb(mode.bg);
+
+    const root = document.documentElement;
+    root.style.setProperty('--accent', mode.bg);
+    root.style.setProperty('--accent-rgb', rgb.r + ', ' + rgb.g + ', ' + rgb.b);
+    root.style.setProperty('--accent-soft',
+      'rgba(' + rgb.r + ', ' + rgb.g + ', ' + rgb.b + ', ' + (resolved === 'dark' ? '0.16' : '0.14') + ')');
+    root.style.setProperty('--accent-ink', mode.ink);
+  }
+
+  function setAccent(id) {
+    if (!PALETTE.some((p) => p.id === id)) return;
+    write(KEY_ACCENT, id);
+    applyAccent();
+  }
+
+  /* ---------- Theme (continued) ---------- */
+
   function applyTheme() {
     const resolved = resolvedTheme();
     document.documentElement.dataset.theme = resolved;
 
     const meta = document.getElementById('meta-theme-color');
     if (meta) meta.setAttribute('content', resolved === 'dark' ? '#000000' : '#f5f5f7');
+
+    applyAccent();
 
     listeners.forEach((fn) => {
       try { fn(getTheme(), resolved); } catch (e) { /* ignore */ }
@@ -99,7 +180,7 @@
           const clean = parsed.map(normalizeCategory).filter(Boolean);
           if (clean.length) return clean;
         }
-      } catch (e) { /* fall through to defaults */ }
+      } catch (e) { /* fall through */ }
     }
     return DEFAULT_CATEGORIES.slice();
   }
@@ -115,15 +196,22 @@
     write(KEY_CATS, JSON.stringify(clean));
   }
 
-  /* ---------- Export / import helper ---------- */
+  /* ---------- Snapshot / restore ---------- */
 
   function snapshot() {
-    return { theme: getTheme(), categories: getCategories() };
+    return {
+      theme: getTheme(),
+      accent: getAccent(),
+      categories: getCategories()
+    };
   }
 
   function restore(data) {
     if (!data || typeof data !== 'object') return;
     if (THEMES.includes(data.theme)) write(KEY_THEME, data.theme);
+    if (typeof data.accent === 'string' && PALETTE.some((p) => p.id === data.accent)) {
+      write(KEY_ACCENT, data.accent);
+    }
     if (Array.isArray(data.categories) && data.categories.length) {
       setCategories(data.categories);
     }
@@ -132,6 +220,8 @@
 
   global.Settings = {
     THEMES,
+    PALETTE,
+    DEFAULT_ACCENT,
     DEFAULT_CATEGORIES,
     FALLBACK_CATEGORY,
     getTheme,
@@ -139,6 +229,9 @@
     setTheme,
     applyTheme,
     onThemeChange,
+    getAccent,
+    setAccent,
+    applyAccent,
     getCategories,
     getCategory,
     setCategories,
