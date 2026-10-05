@@ -28,7 +28,7 @@
     <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
     <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
     <symbol id="i-pin" viewBox="0 0 24 24">
-      <g transform="rotate(45 12 11)">
+      <g transform="translate(12 11) rotate(45) scale(1.12) translate(-12 -11)">
         <path d="M10 3.5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1V8l2 2v1.5h-3v7a1 1 0 0 1-2 0v-7H8V10l2-2z"/>
       </g>
     </symbol>
@@ -124,7 +124,7 @@
       <div class="section">
         <h2 class="section-title">Appearance</h2>
         <div class="card">
-          <div class="segmented" id="theme-segmented" role="radiogroup" aria-label="Appearance">
+          <div class="segmented" id="theme-segmented" role="radiogroup" aria-label="Theme">
             <button type="button" class="seg" data-theme-opt="light" role="radio" aria-checked="false">
               <svg class="ico ico-18" aria-hidden="true"><use href="#i-sun"/></svg><span>Light</span>
             </button>
@@ -134,6 +134,13 @@
             <button type="button" class="seg" data-theme-opt="system" role="radio" aria-checked="true">
               <svg class="ico ico-18" aria-hidden="true"><use href="#i-auto"/></svg><span>System</span>
             </button>
+          </div>
+
+          <div class="row-sep" style="margin-left:0"></div>
+
+          <div class="swatch-picker">
+            <p class="swatch-label">Accent color</p>
+            <div class="swatch-row" id="accent-swatches" role="radiogroup" aria-label="Accent color"></div>
           </div>
         </div>
       </div>
