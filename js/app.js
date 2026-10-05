@@ -1,6 +1,5 @@
 /* ============================================================
    Noter — UI layer
-   Views, navigation, editor, gestures, dialogs, backup/import.
    ============================================================ */
 (function (global) {
   'use strict';
@@ -23,6 +22,7 @@
     searchClear:    $('#search-clear'),
     searchHeader:   $('.view-header--search'),
     themeSegmented: $('#theme-segmented'),
+    accentSwatches: $('#accent-swatches'),
     categoriesCard: $('#categories-card'),
     storageNote:    $('#storage-note'),
     editor:         $('#editor'),
@@ -107,7 +107,6 @@
     const todayStart = startOfDay(Date.now());
     const noteStart = startOfDay(ts);
     const dayDiff = Math.round((todayStart - noteStart) / DAY);
-
     if (dayDiff <= 0) return 'Today';
     if (dayDiff === 1) return 'Yesterday';
     if (dayDiff < 7) return new Date(ts).toLocaleDateString(undefined, { weekday: 'long' });
@@ -124,7 +123,6 @@
     else if (h >= 12 && h < 17) greeting = 'Good afternoon';
     else if (h >= 17 && h < 22) greeting = 'Good evening';
     else greeting = 'Good night';
-
     el.greetingTitle.textContent = greeting + ', Zayd';
     el.greetingSub.textContent = 'What’s on your mind?';
   }
@@ -181,13 +179,15 @@
             '<svg class="ico"><use href="#' + escapeHtml(cat.icon) + '"/></svg>' +
           '</span>' +
           '<span class="note-main">' +
-            '<span class="' + titleClass + '">' + titleText + '</span>' +
+            '<span class="note-title-row">' +
+              '<span class="' + titleClass + '">' + titleText + '</span>' +
+              (flags ? '<span class="note-flags">' + flags + '</span>' : '') +
+            '</span>' +
             '<span class="note-meta">' +
               '<span class="note-meta-time">' + time + '</span>' +
               '<span class="note-meta-day">' + day + '</span>' +
             '</span>' +
           '</span>' +
-          (flags ? '<span class="note-flags">' + flags + '</span>' : '') +
         '</div>' +
       '</li>'
     );
@@ -206,15 +206,12 @@
 
   function renderGrouped(container, notes, emptyHtml) {
     if (!notes.length) { container.innerHTML = emptyHtml; return; }
-
     let html = '';
     let currentGroup = null;
     let open = false;
-
     for (let i = 0; i < notes.length; i++) {
       const note = notes[i];
       const label = groupLabel(note.updatedAt);
-
       if (label !== currentGroup) {
         if (open) html += '</ul></div>';
         html += '<div class="group"><h2 class="group-title">' + escapeHtml(label) + '</h2><ul class="note-list">';
@@ -223,7 +220,6 @@
       }
       html += noteRowHtml(note);
     }
-
     if (open) html += '</ul></div>';
     container.innerHTML = html;
   }
@@ -235,10 +231,6 @@
     html += '</ul>';
     container.innerHTML = html;
   }
-
-  /* ==========================================================
-     Rendering per view
-     ========================================================== */
 
   function renderHome() {
     renderGrouped(
@@ -259,30 +251,25 @@
   function renderSearch() {
     const query = el.searchInput.value;
     el.searchClear.hidden = !query;
-
     if (!query.trim()) {
       el.searchList.innerHTML = emptyStateHtml(
         'i-search', 'Search your notes', 'Find notes by title, content, or category.'
       );
       return;
     }
-
     const results = Search.run(query, NotesStore.notes);
-
     if (!results.length) {
       el.searchList.innerHTML = emptyStateHtml(
         'i-search', 'No notes found', 'Try a different word or check the spelling.'
       );
       return;
     }
-
     renderFlat(el.searchList, results, '');
   }
 
   function renderCategoriesCard() {
     const cats = Settings.getCategories();
     const counts = NotesStore.countsByCategory();
-
     let html = '';
     for (let i = 0; i < cats.length; i++) {
       const c = cats[i];
@@ -315,13 +302,43 @@
   }
 
   /* ==========================================================
+     Accent swatches
+     ========================================================== */
+
+  function renderAccentSwatches() {
+    if (!el.accentSwatches) return;
+    const current = Settings.getAccent();
+    const resolved = Settings.resolvedTheme();
+    const palette = Settings.PALETTE;
+
+    let html = '';
+    for (let i = 0; i < palette.length; i++) {
+      const p = palette[i];
+      const mode = resolved === 'dark' ? p.dark : p.light;
+      const checked = p.id === current;
+      html += (
+        '<button type="button" class="swatch" role="radio" ' +
+                'data-accent="' + p.id + '" ' +
+                'aria-checked="' + (checked ? 'true' : 'false') + '" ' +
+                'aria-label="' + escapeHtml(p.name) + '" ' +
+                'title="' + escapeHtml(p.name) + '" ' +
+                'style="--swatch-color:' + mode.bg + ';--swatch-ink:' + mode.ink + '">' +
+          '<span class="swatch-check" aria-hidden="true">' +
+            '<svg class="ico" viewBox="0 0 24 24"><use href="#i-check"/></svg>' +
+          '</span>' +
+        '</button>'
+      );
+    }
+    el.accentSwatches.innerHTML = html;
+  }
+
+  /* ==========================================================
      Navigation
      ========================================================== */
 
   function switchView(name) {
     if (state.view === name) return;
     state.view = name;
-
     for (const v of el.views) v.classList.toggle('is-active', v.dataset.view === name);
     for (const tab of el.tabs) {
       const active = tab.dataset.tab === name;
@@ -329,11 +346,13 @@
       if (active) tab.setAttribute('aria-current', 'page');
       else tab.removeAttribute('aria-current');
     }
-
     closeSwipe();
     if (name !== 'search' && document.activeElement === el.searchInput) el.searchInput.blur();
     el.fab.classList.toggle('is-hidden', name === 'more');
-    if (name === 'more') renderCategoriesCard();
+    if (name === 'more') {
+      renderCategoriesCard();
+      renderAccentSwatches();
+    }
   }
 
   /* ==========================================================
@@ -367,7 +386,6 @@
     if (!face) return;
     const item = face.closest('.note-item');
     if (!item) return;
-
     drag = {
       item, face,
       id: item.dataset.id,
@@ -391,12 +409,10 @@
     if (!drag || e.pointerId !== drag.pointerId) return;
     const dx = e.clientX - drag.startX;
     const dy = e.clientY - drag.startY;
-
     if (!drag.moved && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
       drag.moved = true;
       clearTimeout(drag.longPressTimer);
     }
-
     if (drag.axis === null) {
       if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
       drag.axis = Math.abs(dx) > Math.abs(dy) * 1.4 ? 'x' : 'y';
@@ -407,14 +423,11 @@
         }
       } else { return; }
     }
-
     if (drag.axis !== 'x') return;
     e.preventDefault();
-
     let next = drag.baseX + dx;
     if (next > SWIPE_MAX) next = SWIPE_MAX + (next - SWIPE_MAX) * 0.28;
     if (next < -SWIPE_MAX) next = -SWIPE_MAX + (next + SWIPE_MAX) * 0.28;
-
     drag.dx = next;
     drag.face.style.transform = 'translate3d(' + next + 'px,0,0)';
   }
@@ -423,15 +436,12 @@
     if (!drag || e.pointerId !== drag.pointerId) return;
     clearTimeout(drag.longPressTimer);
     const d = drag;
-
     if (d.axis === 'x') {
       const item = d.item;
       item.classList.remove('is-dragging');
-
       let settle = 0, side = null;
       if (d.dx >= SWIPE_WIDTH * 0.55) { settle = SWIPE_WIDTH; side = 'left'; }
       else if (d.dx <= -SWIPE_WIDTH * 0.55) { settle = -SWIPE_WIDTH; side = 'right'; }
-
       if (settle === 0) {
         d.face.style.transform = '';
         item.classList.remove('is-open');
@@ -495,7 +505,6 @@
     const opts = options || {};
     const note = NotesStore.get(id);
     if (!note) return;
-
     requestConfirm({
       title: 'Delete this note?',
       message: 'You can undo this right after.',
@@ -525,7 +534,6 @@
   function showToast(message, actionLabel, actionFn) {
     clearTimeout(state.toastTimer);
     el.toastMsg.textContent = message;
-
     if (actionLabel && typeof actionFn === 'function') {
       el.toastAction.hidden = false;
       el.toastAction.textContent = actionLabel;
@@ -534,7 +542,6 @@
       el.toastAction.hidden = true;
       state.toastActionFn = null;
     }
-
     el.toast.hidden = false;
     state.toastTimer = setTimeout(hideToast, actionLabel ? 5000 : 2200);
   }
@@ -587,15 +594,12 @@
   function openSheet(id) {
     const note = NotesStore.get(id);
     if (!note) return;
-
     state.sheetNoteId = id;
     el.sheetTitle.textContent = NotesStore.displayTitle(note) || 'Empty note';
-
     const cats = Settings.getCategories();
     let html = '';
     html += sheetBtn('pin', note.pinned ? 'Unpin note' : 'Pin to top', 'i-pin', false);
     html += sheetBtn('fav', note.favorite ? 'Remove from favorites' : 'Add to favorites', 'i-star', false);
-
     for (const c of cats) {
       const checked = c.id === note.category;
       html += (
@@ -609,7 +613,6 @@
         '</button>'
       );
     }
-
     html += sheetBtn('delete', 'Delete note', 'i-trash', true);
     el.sheetActions.innerHTML = html;
     el.sheetBackdrop.hidden = false;
@@ -649,13 +652,11 @@
   function syncEditorChrome() {
     const note = state.editor && state.editor.note;
     if (!note) return;
-
     el.editorPin.setAttribute('aria-pressed', note.pinned ? 'true' : 'false');
     el.editorPin.setAttribute('aria-label', note.pinned ? 'Unpin note' : 'Pin note');
     el.editorFav.setAttribute('aria-pressed', note.favorite ? 'true' : 'false');
     el.editorFav.setAttribute('aria-label', note.favorite ? 'Remove from favorites' : 'Mark as favorite');
     el.editorDelete.disabled = state.editor.isNew;
-
     const chips = $$('.chip', el.editorCats);
     for (const chip of chips) {
       chip.setAttribute('aria-checked', chip.dataset.cat === note.category ? 'true' : 'false');
@@ -701,7 +702,6 @@
 
   function openEditor(id) {
     if (state.editor) return;
-
     let note, isNew = false;
     if (id) {
       const existing = NotesStore.get(id);
@@ -711,26 +711,19 @@
       note = NotesStore.createDraft(defaultCategoryForNewNote());
       isNew = true;
     }
-
     state.editor = { note, isNew, timer: null, dirty: false, mode: isNew ? 'edit' : 'view' };
     state.lastFocused = document.activeElement;
-
     el.editorTitle.value = note.title;
     el.editorContent.value = note.content;
     renderEditorCategories(note.category);
     applyEditorMode();
     syncEditorChrome();
-
     el.editor.hidden = false;
     el.fab.classList.add('is-hidden');
     pushOverlayHistory('editor');
-
     requestAnimationFrame(() => {
       autoGrowTitle();
       if (!state.editor || state.editor.mode !== 'edit') return;
-
-      // New note → cursor starts in the title so you can type it first.
-      // Existing note that just entered edit mode → cursor in the content.
       if (state.editor.isNew) {
         el.editorTitle.focus({ preventScroll: true });
       } else {
@@ -752,13 +745,10 @@
     if (!ed) return;
     clearTimeout(ed.timer);
     ed.timer = null;
-
     if (!ed.dirty && !ed.isNew) return;
-
     const note = ed.note;
     note.title = el.editorTitle.value;
     note.content = el.editorContent.value;
-
     if (NotesStore.isBlank(note)) {
       if (!ed.isNew) {
         const snapshot = Object.assign({}, note);
@@ -774,7 +764,6 @@
       }
       return;
     }
-
     note.updatedAt = Date.now();
     await NotesStore.upsert(note);
     ed.isNew = false;
@@ -786,26 +775,21 @@
     if (state.closingEditor) return;
     const ed = state.editor;
     if (!ed) return;
-
     state.closingEditor = true;
     clearTimeout(ed.timer);
     try { await flushEditorSave(); } catch (e) {}
-
     el.editor.classList.add('is-closing');
-
     await new Promise((resolve) => {
       let done = false;
       const finish = () => { if (!done) { done = true; resolve(); } };
       el.editor.addEventListener('animationend', finish, { once: true });
       setTimeout(finish, 320);
     });
-
     el.editor.classList.remove('is-closing');
     el.editor.hidden = true;
     state.editor = null;
     el.fab.classList.toggle('is-hidden', state.view === 'more');
     renderAll();
-
     if (state.lastFocused && document.contains(state.lastFocused)) {
       try { state.lastFocused.focus({ preventScroll: true }); } catch (e) {}
     }
@@ -818,7 +802,6 @@
     if (!ed || ed.isNew) return;
     const id = ed.note.id;
     const snapshot = Object.assign({}, ed.note);
-
     requestConfirm({
       title: 'Delete this note?',
       message: 'You can undo this right after.',
@@ -856,15 +839,12 @@
 
   function handleBack() {
     const kind = overlayStack[overlayStack.length - 1];
-
     if (kind === 'editor' && state.editor) { closeEditor(); return true; }
     if (kind === 'sheet') { closeSheet(); return true; }
     if (kind === 'dialog') { closeConfirm(); return true; }
-
     if (state.editor) { closeEditor(); return true; }
     if (!el.dialogBackdrop.hidden) { closeConfirm(); return true; }
     if (!el.sheetBackdrop.hidden) { closeSheet(); return true; }
-
     if (state.view !== 'home') {
       switchView('home');
       try { history.pushState({ noter: 'home' }, ''); } catch (e) {}
@@ -894,12 +874,10 @@
         notes: NotesStore.sorted(),
         settings: Settings.snapshot()
       };
-
       const json = JSON.stringify(payload, null, 2);
       const stamp = new Date().toISOString().slice(0, 10);
       const filename = 'noter-backup-' + stamp + '.json';
       const blob = new Blob([json], { type: 'application/json' });
-
       const file = new File([blob], filename, { type: 'application/json' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
         try {
@@ -909,7 +887,6 @@
           if (err && err.name === 'AbortError') return;
         }
       }
-
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -931,7 +908,6 @@
 
   async function handleImportFile(file) {
     if (!file) return;
-
     let data;
     try {
       data = JSON.parse(await file.text());
@@ -939,19 +915,16 @@
       requestConfirm({ title: 'Import failed', message: 'That file could not be read as a Noter backup.', confirmLabel: 'OK', onConfirm: null });
       return;
     }
-
     const notes = Array.isArray(data) ? data : (data && Array.isArray(data.notes) ? data.notes : null);
     if (!notes) {
       requestConfirm({ title: 'Import failed', message: 'No notes were found in that file.', confirmLabel: 'OK', onConfirm: null });
       return;
     }
-
     const clean = notes.filter((n) => n && typeof n === 'object');
     if (!clean.length) {
       requestConfirm({ title: 'Nothing to import', message: 'That backup does not contain any notes.', confirmLabel: 'OK', onConfirm: null });
       return;
     }
-
     requestConfirm({
       title: 'Import ' + clean.length + (clean.length === 1 ? ' note?' : ' notes?'),
       message: 'Existing notes are kept unless the imported copy is newer.',
@@ -962,7 +935,7 @@
           if (data && data.settings) Settings.restore(data.settings);
           renderAll();
           syncThemeUI();
-
+          renderAccentSwatches();
           const parts = [];
           if (result.added) parts.push(result.added + ' added');
           if (result.updated) parts.push(result.updated + ' updated');
@@ -976,7 +949,7 @@
   }
 
   /* ==========================================================
-     Theme UI
+     Theme + accent UI
      ========================================================== */
 
   function syncThemeUI() {
@@ -995,7 +968,6 @@
     const item = e.target.closest ? e.target.closest('.note-item') : null;
     if (!item) { closeSwipe(); return; }
     const id = item.dataset.id;
-
     const swipeBtn = e.target.closest('.swipe-btn');
     if (swipeBtn) {
       const action = swipeBtn.dataset.swipe;
@@ -1004,7 +976,6 @@
       else if (action === 'delete') deleteNote(id);
       return;
     }
-
     const face = e.target.closest('.note-face');
     if (face) {
       if (state.openSwipeId === id) { closeSwipe(); return; }
@@ -1142,13 +1113,11 @@
       const action = btn.dataset.sheet;
       const id = state.sheetNoteId;
       if (!id) return;
-
       if (action === 'cat') {
         await setCategory(id, btn.dataset.cat);
         closeSheet();
         return;
       }
-
       closeSheet();
       if (action === 'pin') await togglePin(id);
       else if (action === 'fav') await toggleFavorite(id);
@@ -1177,6 +1146,14 @@
       if (!seg) return;
       Settings.setTheme(seg.dataset.themeOpt);
       syncThemeUI();
+      renderAccentSwatches();
+    });
+
+    el.accentSwatches.addEventListener('click', (e) => {
+      const sw = e.target.closest('.swatch');
+      if (!sw) return;
+      Settings.setAccent(sw.dataset.accent);
+      renderAccentSwatches();
     });
 
     const moreView = $('#view-more');
@@ -1216,6 +1193,12 @@
         fn();
       }
     });
+
+    // Redraw swatches (they swap to the dark-mode variant) whenever
+    // the resolved theme changes.
+    Settings.onThemeChange(() => {
+      renderAccentSwatches();
+    });
   }
 
   /* ==========================================================
@@ -1225,6 +1208,7 @@
   async function boot() {
     Settings.applyTheme();
     syncThemeUI();
+    renderAccentSwatches();
     updateGreeting();
     setInterval(updateGreeting, 60000);
 
