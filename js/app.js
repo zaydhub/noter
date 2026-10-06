@@ -17,14 +17,21 @@
     greetingSub:    $('#greeting-sub'),
     homeList:       $('#home-list'),
     searchList:     $('#search-list'),
-    favoritesList:  $('#favorites-list'),
     searchInput:    $('#search-input'),
     searchClear:    $('#search-clear'),
     searchHeader:   $('.view-header--search'),
+
+    catBack:        $('#cat-back'),
+    catTitle:       $('#cat-title'),
+    catHeaderActions: $('#cat-header-actions'),
+    catViewToggle:  $('#cat-view-toggle'),
+    catAdd:         $('#cat-add'),
+    catContent:     $('#cat-content'),
+
     themeSegmented: $('#theme-segmented'),
     accentSwatches: $('#accent-swatches'),
-    categoriesCard: $('#categories-card'),
     storageNote:    $('#storage-note'),
+
     editor:         $('#editor'),
     editorBack:     $('#editor-back'),
     editorMode:     $('#editor-mode'),
@@ -34,18 +41,34 @@
     editorTitle:    $('#editor-title'),
     editorContent:  $('#editor-content'),
     editorCats:     $('#editor-categories'),
+
     sheetBackdrop:  $('#sheet-backdrop'),
     sheetTitle:     $('#sheet-title'),
     sheetActions:   $('#sheet-actions'),
     sheetCancel:    $('#sheet-cancel'),
+
+    catSheetBackdrop: $('#cat-sheet-backdrop'),
+    catSheetTitle:  $('#cat-sheet-title'),
+    catSheetActions: $('#cat-sheet-actions'),
+    catSheetCancel: $('#cat-sheet-cancel'),
+
+    catEditorBackdrop: $('#cat-editor-backdrop'),
+    catEditorTitle: $('#cat-editor-title'),
+    catEditorName:  $('#cat-editor-name'),
+    catEditorIcons: $('#cat-editor-icons'),
+    catEditorCancel: $('#cat-editor-cancel'),
+    catEditorSave:  $('#cat-editor-save'),
+
     dialogBackdrop: $('#dialog-backdrop'),
     dialogTitle:    $('#dialog-title'),
     dialogMsg:      $('#dialog-msg'),
     dialogCancel:   $('#dialog-cancel'),
     dialogConfirm:  $('#dialog-confirm'),
+
     toast:          $('#toast'),
     toastMsg:       $('#toast-msg'),
     toastAction:    $('#toast-action'),
+
     importFile:     $('#import-file')
   };
 
@@ -58,7 +81,13 @@
     toastTimer: null,
     toastActionFn: null,
     lastFocused: null,
-    closingEditor: false
+    closingEditor: false,
+
+    // Categories view
+    catDetail: null,      // null | { id: string | 'favorites', name: string }
+    catEditor: null,      // null | { mode: 'add'|'rename', categoryId: string|null, icon: string }
+    catSheetId: null,     // category id currently in the action sheet
+    catLongPressFired: false
   };
 
   /* ==========================================================
@@ -128,7 +157,7 @@
   }
 
   /* ==========================================================
-     Note row rendering
+     Note row rendering (shared by home / search / category detail)
      ========================================================== */
 
   function noteFlagsHtml(note) {
@@ -232,19 +261,15 @@
     container.innerHTML = html;
   }
 
+  /* ==========================================================
+     Home / Search
+     ========================================================== */
+
   function renderHome() {
     renderGrouped(
       el.homeList,
       NotesStore.sorted(),
       emptyStateHtml('i-home', 'No notes yet', 'Tap + to start writing something.')
-    );
-  }
-
-  function renderFavorites() {
-    renderFlat(
-      el.favoritesList,
-      NotesStore.favorites(),
-      emptyStateHtml('i-star', 'No favorite notes yet', 'Save important notes here for quick access.')
     );
   }
 
@@ -267,69 +292,299 @@
     renderFlat(el.searchList, results, '');
   }
 
-  function renderCategoriesCard() {
-    const cats = Settings.getCategories();
+  /* ==========================================================
+     Categories view
+     ========================================================== */
+
+  function renderCategoriesView() {
+    const detail = state.catDetail;
+    const view = Settings.getCategoryView();
     const counts = NotesStore.countsByCategory();
-    let html = '';
-    for (let i = 0; i < cats.length; i++) {
-      const c = cats[i];
-      if (i > 0) html += '<div class="row-sep"></div>';
-      html += (
-        '<div class="cat-row">' +
-          '<span class="cat-row-icon" aria-hidden="true">' +
-            '<svg class="ico"><use href="#' + escapeHtml(c.icon) + '"/></svg>' +
-          '</span>' +
-          '<span class="cat-row-name">' + escapeHtml(c.name) + '</span>' +
-          '<span class="cat-row-count">' + (counts[c.id] || 0) + '</span>' +
-        '</div>'
-      );
+    const favoritesCount = NotesStore.favorites().length;
+
+    if (detail) {
+      // --- Detail mode: show notes for a category or favorites ---
+      el.catBack.hidden = false;
+      el.catTitle.textContent = detail.name;
+      el.catHeaderActions.hidden = true;
+
+      const notes = detail.id === 'favorites'
+        ? NotesStore.favorites()
+        : NotesStore.byCategory(detail.id);
+
+      if (detail.id === 'favorites') {
+        renderFlat(el.catContent, notes,
+          emptyStateHtml('i-star', 'No favorite notes yet',
+            'Tap the star on a note to save it here.'));
+      } else {
+        renderFlat(el.catContent, notes,
+          emptyStateHtml('i-categories', 'No notes in ' + detail.name,
+            'Notes assigned to this category will show up here.'));
+      }
+      return;
     }
-    el.categoriesCard.innerHTML = html;
+
+    // --- Main mode ---
+    el.catBack.hidden = true;
+    el.catTitle.textContent = 'Categories';
+    el.catHeaderActions.hidden = false;
+
+    // Toggle icon flips to indicate the OTHER view you can switch to.
+    const toggleIcon = view === 'grid' ? 'i-list' : 'i-grid';
+    const toggleLabel = view === 'grid' ? 'Switch to list view' : 'Switch to grid view';
+    el.catViewToggle.setAttribute('aria-label', toggleLabel);
+    el.catViewToggle.innerHTML =
+      '<svg class="ico ico-20" aria-hidden="true"><use href="#' + toggleIcon + '"/></svg>';
+
+    const cats = Settings.getCategories();
+
+    let html = '';
+
+    // Favorites entry (always on top)
+    html +=
+      '<button type="button" class="fav-entry" id="cat-favorites" ' +
+              'aria-label="Open favorites">' +
+        '<span class="fav-entry-icon" aria-hidden="true">' +
+          '<svg class="ico"><use href="#i-star"/></svg>' +
+        '</span>' +
+        '<span class="fav-entry-label">Favorites</span>' +
+        '<span class="fav-entry-count">' + favoritesCount + '</span>' +
+        '<svg class="ico ico-18 row-chev" aria-hidden="true"><use href="#i-chevron"/></svg>' +
+      '</button>';
+
+    html += '<h2 class="group-title cat-section-title">All categories</h2>';
+
+    if (!cats.length) {
+      html += '<p class="cat-empty">No categories.</p>';
+    } else if (view === 'grid') {
+      html += '<div class="cat-grid" id="cat-grid">';
+      for (const c of cats) {
+        html += (
+          '<button type="button" class="cat-card" data-cat-id="' + escapeHtml(c.id) + '">' +
+            '<span class="cat-card-icon" aria-hidden="true">' +
+              '<svg class="ico"><use href="#' + escapeHtml(c.icon) + '"/></svg>' +
+            '</span>' +
+            '<span class="cat-card-name">' + escapeHtml(c.name) + '</span>' +
+            '<span class="cat-card-count">' + (counts[c.id] || 0) +
+              (counts[c.id] === 1 ? ' note' : ' notes') + '</span>' +
+          '</button>'
+        );
+      }
+      html += '</div>';
+    } else {
+      html += '<div class="cat-list" id="cat-list">';
+      for (const c of cats) {
+        html += (
+          '<button type="button" class="cat-list-item" data-cat-id="' + escapeHtml(c.id) + '">' +
+            '<span class="cat-list-icon" aria-hidden="true">' +
+              '<svg class="ico"><use href="#' + escapeHtml(c.icon) + '"/></svg>' +
+            '</span>' +
+            '<span class="cat-list-name">' + escapeHtml(c.name) + '</span>' +
+            '<span class="cat-list-count">' + (counts[c.id] || 0) + '</span>' +
+            '<svg class="ico ico-18 row-chev" aria-hidden="true"><use href="#i-chevron"/></svg>' +
+          '</button>'
+        );
+      }
+      html += '</div>';
+    }
+
+    el.catContent.innerHTML = html;
   }
 
-  function renderStorageNote() {
-    const n = NotesStore.notes.length;
-    el.storageNote.textContent =
-      n + (n === 1 ? ' note stored on this device' : ' notes stored on this device');
+  function openCategoryDetail(id, name) {
+    if (id === 'favorites') {
+      state.catDetail = { id: 'favorites', name: 'Favorites' };
+    } else {
+      const cat = Settings.getCategory(id);
+      if (!cat) return;
+      state.catDetail = { id: cat.id, name: cat.name };
+    }
+    pushOverlayHistory('cat-detail');
+    renderCategoriesView();
+    const v = $('#view-categories');
+    if (v) v.scrollTop = 0;
   }
 
-  function renderAll() {
-    renderHome();
-    renderFavorites();
-    renderSearch();
-    renderCategoriesCard();
-    renderStorageNote();
+  function closeCategoryDetail() {
+    state.catDetail = null;
+    renderCategoriesView();
   }
 
   /* ==========================================================
-     Accent swatches
+     Category actions sheet (long-press)
      ========================================================== */
 
-  function renderAccentSwatches() {
-    if (!el.accentSwatches) return;
-    const current = Settings.getAccent();
-    const resolved = Settings.resolvedTheme();
-    const palette = Settings.PALETTE;
+  function openCategoryActions(id) {
+    const cat = Settings.getCategory(id);
+    if (!cat) return;
+
+    state.catSheetId = id;
+    el.catSheetTitle.textContent = cat.name;
+
+    const isProtected = id === Settings.PROTECTED_CATEGORY_ID;
 
     let html = '';
-    for (let i = 0; i < palette.length; i++) {
-      const p = palette[i];
-      const mode = resolved === 'dark' ? p.dark : p.light;
-      const checked = p.id === current;
+    html += (
+      '<button type="button" class="sheet-btn" data-cat-action="rename">' +
+        '<svg class="ico ico-20" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-edit"/></svg>' +
+        '<span>Rename</span>' +
+      '</button>'
+    );
+    if (!isProtected) {
       html += (
-        '<button type="button" class="swatch" role="radio" ' +
-                'data-accent="' + p.id + '" ' +
-                'aria-checked="' + (checked ? 'true' : 'false') + '" ' +
-                'aria-label="' + escapeHtml(p.name) + '" ' +
-                'title="' + escapeHtml(p.name) + '" ' +
-                'style="--swatch-color:' + mode.bg + ';--swatch-ink:' + mode.ink + '">' +
-          '<span class="swatch-check" aria-hidden="true">' +
-            '<svg class="ico" viewBox="0 0 24 24"><use href="#i-check"/></svg>' +
-          '</span>' +
+        '<button type="button" class="sheet-btn sheet-btn--danger" data-cat-action="delete">' +
+          '<svg class="ico ico-20" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-trash"/></svg>' +
+          '<span>Delete</span>' +
         '</button>'
       );
     }
-    el.accentSwatches.innerHTML = html;
+
+    el.catSheetActions.innerHTML = html;
+    el.catSheetBackdrop.hidden = false;
+    pushOverlayHistory('cat-sheet');
+  }
+
+  function closeCategoryActions() {
+    el.catSheetBackdrop.hidden = true;
+    state.catSheetId = null;
+  }
+
+  /* ==========================================================
+     Category editor sheet (add / rename)
+     ========================================================== */
+
+  function renderCategoryIconPicker() {
+    const selected = state.catEditor ? state.catEditor.icon : 'c-other';
+    const choices = Settings.ICON_CHOICES;
+    let html = '';
+    for (const iconId of choices) {
+      const checked = iconId === selected;
+      html += (
+        '<button type="button" class="icon-opt" role="radio" data-icon="' + iconId + '" ' +
+                'aria-checked="' + (checked ? 'true' : 'false') + '" aria-label="Icon">' +
+          '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#' + iconId + '"/></svg>' +
+        '</button>'
+      );
+    }
+    el.catEditorIcons.innerHTML = html;
+  }
+
+  function syncCategoryEditorSave() {
+    const ed = state.catEditor;
+    if (!ed) return;
+    const name = el.catEditorName.value.trim();
+    el.catEditorSave.disabled = name.length === 0;
+  }
+
+  function openCategoryEditor(mode, categoryId) {
+    let icon = 'c-other';
+    let name = '';
+
+    if (mode === 'rename' && categoryId) {
+      const cat = Settings.getCategory(categoryId);
+      if (!cat) return;
+      icon = cat.icon;
+      name = cat.name;
+    } else {
+      mode = 'add';
+      icon = Settings.ICON_CHOICES[0];
+      categoryId = null;
+    }
+
+    state.catEditor = { mode, categoryId, icon };
+    el.catEditorTitle.textContent = mode === 'add' ? 'New category' : 'Rename category';
+    el.catEditorName.value = name;
+    renderCategoryIconPicker();
+    syncCategoryEditorSave();
+
+    el.catEditorBackdrop.hidden = false;
+    pushOverlayHistory('cat-editor');
+
+    requestAnimationFrame(() => {
+      el.catEditorName.focus({ preventScroll: true });
+      try {
+        const len = el.catEditorName.value.length;
+        el.catEditorName.setSelectionRange(len, len);
+      } catch (e) {}
+    });
+  }
+
+  function closeCategoryEditor() {
+    el.catEditorBackdrop.hidden = true;
+    state.catEditor = null;
+  }
+
+  function saveCategoryEditor() {
+    const ed = state.catEditor;
+    if (!ed) return;
+
+    const name = el.catEditorName.value.trim();
+    if (!name) return;
+
+    if (ed.mode === 'add') {
+      const created = Settings.addCategory(name, ed.icon);
+      if (!created) {
+        showToast('That name is already in use');
+        return;
+      }
+      closeCategoryEditor();
+      renderCategoriesView();
+      showToast('Category created');
+    } else {
+      const ok = Settings.updateCategory(ed.categoryId, { name, icon: ed.icon });
+      if (!ok) {
+        showToast('That name is already in use');
+        return;
+      }
+      // If the currently open detail view is this category, update its title.
+      if (state.catDetail && state.catDetail.id === ed.categoryId) {
+        state.catDetail.name = name;
+      }
+      closeCategoryEditor();
+      renderCategoriesView();
+      renderAllNotesViews();
+      showToast('Category updated');
+    }
+  }
+
+  /* ==========================================================
+     Category deletion
+     ========================================================== */
+
+  function requestDeleteCategory(id) {
+    const cat = Settings.getCategory(id);
+    if (!cat) return;
+    if (id === Settings.PROTECTED_CATEGORY_ID) {
+      showToast('"Other" cannot be deleted');
+      return;
+    }
+
+    const count = NotesStore.countsByCategory()[id] || 0;
+    const msg = count === 0
+      ? 'This category will be removed.'
+      : (count === 1
+          ? '1 note will be moved to “Other”.'
+          : count + ' notes will be moved to “Other”.');
+
+    requestConfirm({
+      title: 'Delete “' + cat.name + '”?',
+      message: msg,
+      confirmLabel: 'Delete',
+      onConfirm: async () => {
+        await NotesStore.reassignCategory(id, Settings.PROTECTED_CATEGORY_ID);
+        const ok = Settings.deleteCategory(id);
+        if (!ok) {
+          showToast('Could not delete category');
+          return;
+        }
+        if (state.catDetail && state.catDetail.id === id) {
+          state.catDetail = null;
+        }
+        renderCategoriesView();
+        renderAllNotesViews();
+        showToast('Category deleted');
+      }
+    });
   }
 
   /* ==========================================================
@@ -339,6 +594,7 @@
   function switchView(name) {
     if (state.view === name) return;
     state.view = name;
+
     for (const v of el.views) v.classList.toggle('is-active', v.dataset.view === name);
     for (const tab of el.tabs) {
       const active = tab.dataset.tab === name;
@@ -346,17 +602,21 @@
       if (active) tab.setAttribute('aria-current', 'page');
       else tab.removeAttribute('aria-current');
     }
+
     closeSwipe();
     if (name !== 'search' && document.activeElement === el.searchInput) el.searchInput.blur();
-    el.fab.classList.toggle('is-hidden', name === 'more');
-    if (name === 'more') {
-      renderCategoriesCard();
+    el.fab.classList.toggle('is-hidden', name === 'more' || name === 'categories');
+
+    if (name === 'categories') {
+      state.catDetail = null;
+      renderCategoriesView();
+    } else if (name === 'more') {
       renderAccentSwatches();
     }
   }
 
   /* ==========================================================
-     Swipe gestures
+     Swipe gestures (notes)
      ========================================================== */
 
   const SWIPE_WIDTH = 76;
@@ -578,7 +838,7 @@
   }
 
   /* ==========================================================
-     Action sheet
+     Note action sheet
      ========================================================== */
 
   function sheetBtn(action, label, icon, danger) {
@@ -596,10 +856,12 @@
     if (!note) return;
     state.sheetNoteId = id;
     el.sheetTitle.textContent = NotesStore.displayTitle(note) || 'Empty note';
+
     const cats = Settings.getCategories();
     let html = '';
     html += sheetBtn('pin', note.pinned ? 'Unpin note' : 'Pin to top', 'i-pin', false);
     html += sheetBtn('fav', note.favorite ? 'Remove from favorites' : 'Add to favorites', 'i-star', false);
+
     for (const c of cats) {
       const checked = c.id === note.category;
       html += (
@@ -613,6 +875,7 @@
         '</button>'
       );
     }
+
     html += sheetBtn('delete', 'Delete note', 'i-trash', true);
     el.sheetActions.innerHTML = html;
     el.sheetBackdrop.hidden = false;
@@ -625,7 +888,7 @@
   }
 
   /* ==========================================================
-     Editor
+     Editor (note)
      ========================================================== */
 
   function autoGrowTitle() {
@@ -724,11 +987,8 @@
     requestAnimationFrame(() => {
       autoGrowTitle();
       if (!state.editor || state.editor.mode !== 'edit') return;
-      if (state.editor.isNew) {
-        el.editorTitle.focus({ preventScroll: true });
-      } else {
-        el.editorContent.focus({ preventScroll: true });
-      }
+      if (state.editor.isNew) el.editorTitle.focus({ preventScroll: true });
+      else el.editorContent.focus({ preventScroll: true });
     });
   }
 
@@ -788,7 +1048,7 @@
     el.editor.classList.remove('is-closing');
     el.editor.hidden = true;
     state.editor = null;
-    el.fab.classList.toggle('is-hidden', state.view === 'more');
+    el.fab.classList.toggle('is-hidden', state.view === 'more' || state.view === 'categories');
     renderAll();
     if (state.lastFocused && document.contains(state.lastFocused)) {
       try { state.lastFocused.focus({ preventScroll: true }); } catch (e) {}
@@ -810,7 +1070,7 @@
         await NotesStore.remove(id);
         state.editor = null;
         el.editor.hidden = true;
-        el.fab.classList.toggle('is-hidden', state.view === 'more');
+        el.fab.classList.toggle('is-hidden', state.view === 'more' || state.view === 'categories');
         renderAll();
         showToast('Note deleted', 'Undo', async () => {
           await NotesStore.upsert(snapshot);
@@ -839,12 +1099,21 @@
 
   function handleBack() {
     const kind = overlayStack[overlayStack.length - 1];
+
     if (kind === 'editor' && state.editor) { closeEditor(); return true; }
     if (kind === 'sheet') { closeSheet(); return true; }
     if (kind === 'dialog') { closeConfirm(); return true; }
+    if (kind === 'cat-detail') { closeCategoryDetail(); return true; }
+    if (kind === 'cat-sheet') { closeCategoryActions(); return true; }
+    if (kind === 'cat-editor') { closeCategoryEditor(); return true; }
+
+    if (state.catEditor) { closeCategoryEditor(); return true; }
+    if (state.catSheetId) { closeCategoryActions(); return true; }
+    if (state.catDetail) { closeCategoryDetail(); return true; }
     if (state.editor) { closeEditor(); return true; }
     if (!el.dialogBackdrop.hidden) { closeConfirm(); return true; }
     if (!el.sheetBackdrop.hidden) { closeSheet(); return true; }
+
     if (state.view !== 'home') {
       switchView('home');
       try { history.pushState({ noter: 'home' }, ''); } catch (e) {}
@@ -960,6 +1229,55 @@
     }
   }
 
+  function renderAccentSwatches() {
+    if (!el.accentSwatches) return;
+    const current = Settings.getAccent();
+    const resolved = Settings.resolvedTheme();
+    const palette = Settings.PALETTE;
+
+    let html = '';
+    for (let i = 0; i < palette.length; i++) {
+      const p = palette[i];
+      const mode = resolved === 'dark' ? p.dark : p.light;
+      const checked = p.id === current;
+      html += (
+        '<button type="button" class="swatch" role="radio" ' +
+                'data-accent="' + p.id + '" ' +
+                'aria-checked="' + (checked ? 'true' : 'false') + '" ' +
+                'aria-label="' + escapeHtml(p.name) + '" ' +
+                'title="' + escapeHtml(p.name) + '" ' +
+                'style="--swatch-color:' + mode.bg + ';--swatch-ink:' + mode.ink + '">' +
+          '<span class="swatch-check" aria-hidden="true">' +
+            '<svg class="ico" viewBox="0 0 24 24"><use href="#i-check"/></svg>' +
+          '</span>' +
+        '</button>'
+      );
+    }
+    el.accentSwatches.innerHTML = html;
+  }
+
+  /* ==========================================================
+     Render all
+     ========================================================== */
+
+  function renderAllNotesViews() {
+    renderHome();
+    renderSearch();
+    if (state.view === 'categories' || state.catDetail) renderCategoriesView();
+  }
+
+  function renderAll() {
+    renderAllNotesViews();
+    renderCategoriesView();
+    renderStorageNote();
+  }
+
+  function renderStorageNote() {
+    const n = NotesStore.notes.length;
+    el.storageNote.textContent =
+      n + (n === 1 ? ' note stored on this device' : ' notes stored on this device');
+  }
+
   /* ==========================================================
      Event wiring
      ========================================================== */
@@ -993,6 +1311,61 @@
     if (item) openEditor(item.dataset.id);
   }
 
+  /* ---- Long-press on category cards/rows ---- */
+  let catPressTimer = null;
+  let catPressTarget = null;
+
+  function catPointerDown(e) {
+    const target = e.target.closest && e.target.closest('[data-cat-id]');
+    if (!target) return;
+    catPressTarget = {
+      id: target.dataset.catId,
+      startX: e.clientX,
+      startY: e.clientY,
+      moved: false
+    };
+    state.catLongPressFired = false;
+    clearTimeout(catPressTimer);
+    catPressTimer = setTimeout(() => {
+      if (catPressTarget && !catPressTarget.moved) {
+        state.catLongPressFired = true;
+        openCategoryActions(catPressTarget.id);
+      }
+    }, 480);
+  }
+
+  function catPointerMove(e) {
+    if (!catPressTarget || catPressTarget.moved) return;
+    const dx = Math.abs(e.clientX - catPressTarget.startX);
+    const dy = Math.abs(e.clientY - catPressTarget.startY);
+    if (dx > 8 || dy > 8) {
+      catPressTarget.moved = true;
+      clearTimeout(catPressTimer);
+    }
+  }
+
+  function catPointerEnd() {
+    clearTimeout(catPressTimer);
+    catPressTarget = null;
+  }
+
+  function catContentClick(e) {
+    // Favorites entry
+    if (e.target.closest('#cat-favorites')) {
+      openCategoryDetail('favorites', 'Favorites');
+      return;
+    }
+    // Category card / row
+    const hit = e.target.closest('[data-cat-id]');
+    if (!hit) return;
+
+    if (state.catLongPressFired) {
+      state.catLongPressFired = false;
+      return;
+    }
+    openCategoryDetail(hit.dataset.catId);
+  }
+
   function wireEvents() {
     el.tabbar.addEventListener('click', (e) => {
       const tab = e.target.closest('.tab');
@@ -1005,7 +1378,7 @@
 
     el.fab.addEventListener('click', () => openEditor(null));
 
-    for (const list of [el.homeList, el.favoritesList, el.searchList]) {
+    for (const list of [el.homeList, el.searchList, el.catContent]) {
       list.addEventListener('click', handleListClick);
       list.addEventListener('keydown', handleListKeydown);
       list.addEventListener('pointerdown', onPointerDown, { passive: true });
@@ -1014,6 +1387,13 @@
       list.addEventListener('pointercancel', onPointerUp);
       list.addEventListener('scroll', () => { if (drag) resetDrag(); }, { passive: true });
     }
+
+    // Categories: long-press + click on cards/rows
+    el.catContent.addEventListener('pointerdown', catPointerDown, { passive: true });
+    el.catContent.addEventListener('pointermove', catPointerMove, { passive: true });
+    el.catContent.addEventListener('pointerup', catPointerEnd);
+    el.catContent.addEventListener('pointercancel', catPointerEnd);
+    el.catContent.addEventListener('click', catContentClick);
 
     document.addEventListener('pointerdown', (e) => {
       if (!state.openSwipeId) return;
@@ -1038,6 +1418,79 @@
       el.searchHeader.classList.toggle('is-scrolled', searchView.scrollTop > 2);
     }, { passive: true });
 
+    /* ---- Categories header ---- */
+    el.catBack.addEventListener('click', () => {
+      if (state.catDetail) {
+        if (overlayStack[overlayStack.length - 1] === 'cat-detail') history.back();
+        else closeCategoryDetail();
+      }
+    });
+
+    el.catViewToggle.addEventListener('click', () => {
+      const next = Settings.getCategoryView() === 'grid' ? 'list' : 'grid';
+      Settings.setCategoryView(next);
+      renderCategoriesView();
+    });
+
+    el.catAdd.addEventListener('click', () => openCategoryEditor('add'));
+
+    /* ---- Category action sheet ---- */
+    el.catSheetCancel.addEventListener('click', () => {
+      if (overlayStack[overlayStack.length - 1] === 'cat-sheet') history.back();
+      else closeCategoryActions();
+    });
+
+    el.catSheetBackdrop.addEventListener('click', (e) => {
+      if (e.target === el.catSheetBackdrop) el.catSheetCancel.click();
+    });
+
+    el.catSheetActions.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-cat-action]');
+      if (!btn) return;
+      const action = btn.dataset.catAction;
+      const id = state.catSheetId;
+      if (!id) return;
+
+      if (action === 'rename') {
+        closeCategoryActions();
+        openCategoryEditor('rename', id);
+        return;
+      }
+      if (action === 'delete') {
+        closeCategoryActions();
+        requestDeleteCategory(id);
+        return;
+      }
+    });
+
+    /* ---- Category editor sheet ---- */
+    el.catEditorCancel.addEventListener('click', () => {
+      if (overlayStack[overlayStack.length - 1] === 'cat-editor') history.back();
+      else closeCategoryEditor();
+    });
+
+    el.catEditorBackdrop.addEventListener('click', (e) => {
+      if (e.target === el.catEditorBackdrop) el.catEditorCancel.click();
+    });
+
+    el.catEditorSave.addEventListener('click', saveCategoryEditor);
+
+    el.catEditorName.addEventListener('input', syncCategoryEditorSave);
+    el.catEditorName.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (!el.catEditorSave.disabled) saveCategoryEditor();
+      }
+    });
+
+    el.catEditorIcons.addEventListener('click', (e) => {
+      const opt = e.target.closest('.icon-opt');
+      if (!opt || !state.catEditor) return;
+      state.catEditor.icon = opt.dataset.icon;
+      renderCategoryIconPicker();
+    });
+
+    /* ---- Note editor ---- */
     el.editorBack.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -1098,6 +1551,7 @@
       scheduleEditorSave();
     });
 
+    /* ---- Note action sheet ---- */
     el.sheetCancel.addEventListener('click', () => {
       if (overlayStack[overlayStack.length - 1] === 'sheet') history.back();
       else closeSheet();
@@ -1124,6 +1578,7 @@
       else if (action === 'delete') deleteNote(id);
     });
 
+    /* ---- Confirm dialog ---- */
     el.dialogCancel.addEventListener('click', () => {
       if (overlayStack[overlayStack.length - 1] === 'dialog') history.back();
       else closeConfirm();
@@ -1135,12 +1590,14 @@
       if (e.target === el.dialogBackdrop) el.dialogCancel.click();
     });
 
+    /* ---- Toast ---- */
     el.toastAction.addEventListener('click', async () => {
       const fn = state.toastActionFn;
       hideToast();
       if (typeof fn === 'function') await fn();
     });
 
+    /* ---- Theme + accent ---- */
     el.themeSegmented.addEventListener('click', (e) => {
       const seg = e.target.closest('.seg');
       if (!seg) return;
@@ -1172,6 +1629,8 @@
 
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
+      if (state.catEditor) { closeCategoryEditor(); return; }
+      if (state.catSheetId) { closeCategoryActions(); return; }
       if (state.editor) { closeEditor(); return; }
       if (!el.dialogBackdrop.hidden) { closeConfirm(); return; }
       if (!el.sheetBackdrop.hidden) { closeSheet(); }
@@ -1185,17 +1644,6 @@
       if (state.editor) flushEditorSave();
     });
 
-    document.addEventListener('keydown', (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && state.toastActionFn) {
-        e.preventDefault();
-        const fn = state.toastActionFn;
-        hideToast();
-        fn();
-      }
-    });
-
-    // Redraw swatches (they swap to the dark-mode variant) whenever
-    // the resolved theme changes.
     Settings.onThemeChange(() => {
       renderAccentSwatches();
     });
