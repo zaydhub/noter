@@ -1,7 +1,5 @@
 /* ============================================================
    Noter — notes store
-   In-memory cache mirrored to IndexedDB. Writes update the
-   cache immediately; callers decide when to re-render.
    ============================================================ */
 (function (global) {
   'use strict';
@@ -17,7 +15,6 @@
            Math.random().toString(36).slice(2, 6);
   }
 
-  /** Normalise anything read from disk/import into a safe note shape. */
   function normalize(raw) {
     const now = Date.now();
     const n = raw && typeof raw === 'object' ? raw : {};
@@ -51,7 +48,7 @@
 
     emit() {
       listeners.forEach((fn) => {
-        try { fn(this.notes); } catch (e) { /* keep other listeners alive */ }
+        try { fn(this.notes); } catch (e) { /* keep others alive */ }
       });
     },
 
@@ -59,18 +56,15 @@
       return this.notes.find((n) => n.id === id) || null;
     },
 
-    /** Create or replace a note in memory + disk. Does NOT emit. */
     async upsert(note) {
       const normalized = normalize(note);
       const index = this.notes.findIndex((n) => n.id === normalized.id);
       if (index === -1) this.notes.push(normalized);
       else this.notes[index] = normalized;
-
       await DB.put(normalized);
       return normalized;
     },
 
-    /** Create a blank draft that is not written until it has content. */
     createDraft(categoryId) {
       const now = Date.now();
       return {
@@ -105,7 +99,6 @@
       return !note || (!note.title.trim() && !note.content.trim());
     },
 
-    /** Pinned first, then most recently updated. */
     sorted(list) {
       const source = list || this.notes;
       return source.slice().sort((a, b) => {
@@ -118,6 +111,10 @@
       return this.sorted(this.notes.filter((n) => n.favorite));
     },
 
+    byCategory(categoryId) {
+      return this.sorted(this.notes.filter((n) => n.category === categoryId));
+    },
+
     countsByCategory() {
       const map = Object.create(null);
       for (const n of this.notes) {
@@ -126,7 +123,20 @@
       return map;
     },
 
-    /** Human-readable title, falling back to the first line of content. */
+    /** Moves every note in one category to another. Returns count moved. */
+    async reassignCategory(fromId, toId) {
+      if (!fromId || !toId || fromId === toId) return 0;
+      const affected = this.notes.filter((n) => n.category === fromId);
+      if (!affected.length) return 0;
+      const now = Date.now();
+      for (const n of affected) {
+        n.category = toId;
+        n.updatedAt = now;
+      }
+      await DB.putMany(affected);
+      return affected.length;
+    },
+
     displayTitle(note) {
       const t = (note.title || '').trim();
       if (t) return t;
@@ -137,11 +147,6 @@
       return firstLine || '';
     },
 
-    /**
-     * Safe merge for imports. Existing notes are only replaced when the
-     * incoming copy is strictly newer, so a stale backup can never clobber
-     * fresher local work.
-     */
     async merge(incoming) {
       const byId = new Map(this.notes.map((n) => [n.id, n]));
       const toWrite = [];
@@ -152,18 +157,9 @@
       for (const raw of incoming) {
         const note = normalize(raw);
         const existing = byId.get(note.id);
-
-        if (!existing) {
-          toWrite.push(note);
-          added++;
-          continue;
-        }
-        if (note.updatedAt > existing.updatedAt) {
-          toWrite.push(note);
-          updated++;
-        } else {
-          skipped++;
-        }
+        if (!existing) { toWrite.push(note); added++; continue; }
+        if (note.updatedAt > existing.updatedAt) { toWrite.push(note); updated++; }
+        else { skipped++; }
       }
 
       if (toWrite.length) {
