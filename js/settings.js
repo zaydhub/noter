@@ -7,42 +7,19 @@
   const KEY_THEME  = 'noter.theme';
   const KEY_ACCENT = 'noter.accent';
   const KEY_CATS   = 'noter.categories';
+  const KEY_CAT_VIEW = 'noter.categoryView';
   const THEMES = ['light', 'dark', 'system'];
 
-  /**
-   * Curated accent palette. Each entry has a light-mode colour and
-   * a dark-mode colour, plus the ink colour to draw on top of the
-   * accent (for buttons like the FAB). Every combination is picked
-   * for reasonable contrast in both themes.
-   */
   const PALETTE = [
-    { id: 'orange', name: 'Orange',
-      light: { bg: '#ff9500', ink: '#ffffff' },
-      dark:  { bg: '#ffb340', ink: '#1c1c1e' } },
-    { id: 'blue',   name: 'Blue',
-      light: { bg: '#007aff', ink: '#ffffff' },
-      dark:  { bg: '#0a84ff', ink: '#ffffff' } },
-    { id: 'indigo', name: 'Indigo',
-      light: { bg: '#5856d6', ink: '#ffffff' },
-      dark:  { bg: '#5e5ce6', ink: '#ffffff' } },
-    { id: 'purple', name: 'Purple',
-      light: { bg: '#af52de', ink: '#ffffff' },
-      dark:  { bg: '#bf5af2', ink: '#1c1c1e' } },
-    { id: 'pink',   name: 'Pink',
-      light: { bg: '#ff2d55', ink: '#ffffff' },
-      dark:  { bg: '#ff6482', ink: '#1c1c1e' } },
-    { id: 'red',    name: 'Red',
-      light: { bg: '#ff3b30', ink: '#ffffff' },
-      dark:  { bg: '#ff453a', ink: '#ffffff' } },
-    { id: 'yellow', name: 'Yellow',
-      light: { bg: '#ffcc00', ink: '#1c1c1e' },
-      dark:  { bg: '#ffd60a', ink: '#1c1c1e' } },
-    { id: 'green',  name: 'Green',
-      light: { bg: '#34c759', ink: '#ffffff' },
-      dark:  { bg: '#30d158', ink: '#1c1c1e' } },
-    { id: 'teal',   name: 'Teal',
-      light: { bg: '#30b0c7', ink: '#ffffff' },
-      dark:  { bg: '#40cbe0', ink: '#1c1c1e' } }
+    { id: 'orange', name: 'Orange', light: { bg: '#ff9500', ink: '#ffffff' }, dark: { bg: '#ffb340', ink: '#1c1c1e' } },
+    { id: 'blue',   name: 'Blue',   light: { bg: '#007aff', ink: '#ffffff' }, dark: { bg: '#0a84ff', ink: '#ffffff' } },
+    { id: 'indigo', name: 'Indigo', light: { bg: '#5856d6', ink: '#ffffff' }, dark: { bg: '#5e5ce6', ink: '#ffffff' } },
+    { id: 'purple', name: 'Purple', light: { bg: '#af52de', ink: '#ffffff' }, dark: { bg: '#bf5af2', ink: '#1c1c1e' } },
+    { id: 'pink',   name: 'Pink',   light: { bg: '#ff2d55', ink: '#ffffff' }, dark: { bg: '#ff6482', ink: '#1c1c1e' } },
+    { id: 'red',    name: 'Red',    light: { bg: '#ff3b30', ink: '#ffffff' }, dark: { bg: '#ff453a', ink: '#ffffff' } },
+    { id: 'yellow', name: 'Yellow', light: { bg: '#ffcc00', ink: '#1c1c1e' }, dark: { bg: '#ffd60a', ink: '#1c1c1e' } },
+    { id: 'green',  name: 'Green',  light: { bg: '#34c759', ink: '#ffffff' }, dark: { bg: '#30d158', ink: '#1c1c1e' } },
+    { id: 'teal',   name: 'Teal',   light: { bg: '#30b0c7', ink: '#ffffff' }, dark: { bg: '#40cbe0', ink: '#1c1c1e' } }
   ];
 
   const DEFAULT_ACCENT = 'orange';
@@ -58,6 +35,13 @@
     { id: 'other',     name: 'Other',     icon: 'c-other'     }
   ];
 
+  const ICON_CHOICES = [
+    'c-thought', 'c-idea', 'c-work', 'c-shopping',
+    'c-important', 'c-todo', 'c-study', 'c-other',
+    'c-tag', 'c-bookmark', 'c-heart', 'c-flag'
+  ];
+
+  const PROTECTED_CATEGORY_ID = 'other';
   const FALLBACK_CATEGORY = DEFAULT_CATEGORIES[DEFAULT_CATEGORIES.length - 1];
   const mql = global.matchMedia('(prefers-color-scheme: dark)');
   const listeners = new Set();
@@ -79,7 +63,7 @@
     const icon = (typeof c.icon === 'string' && c.icon)
       ? c.icon
       : (fallback ? fallback.icon : 'c-other');
-    return { id: c.id, name: c.name, icon };
+    return { id: c.id, name: c.name.slice(0, 24), icon };
   }
 
   function findAccent(id) {
@@ -108,16 +92,10 @@
 
   function hexToRgb(hex) {
     const h = hex.replace('#', '');
-    const n = parseInt(h.length === 3
-      ? h.split('').map((c) => c + c).join('')
-      : h, 16);
+    const n = parseInt(h.length === 3 ? h.split('').map((c) => c + c).join('') : h, 16);
     return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
   }
 
-  /**
-   * Push the current accent into CSS custom properties on <html>.
-   * Called on boot and every time theme or accent changes.
-   */
   function applyAccent() {
     const resolved = resolvedTheme();
     const accent = findAccent(getAccent());
@@ -196,13 +174,82 @@
     write(KEY_CATS, JSON.stringify(clean));
   }
 
+  function generateCategoryId() {
+    return 'custom-' + Date.now().toString(36) + '-' +
+           Math.random().toString(36).slice(2, 6);
+  }
+
+  /** Returns the new category, or null if the name is empty/duplicate. */
+  function addCategory(name, icon) {
+    const trimmed = String(name || '').trim().slice(0, 24);
+    if (!trimmed) return null;
+
+    const cats = getCategories();
+    const dup = cats.some((c) => c.name.toLowerCase() === trimmed.toLowerCase());
+    if (dup) return null;
+
+    const chosenIcon = ICON_CHOICES.includes(icon) ? icon : 'c-other';
+    const cat = { id: generateCategoryId(), name: trimmed, icon: chosenIcon };
+    cats.push(cat);
+    setCategories(cats);
+    return cat;
+  }
+
+  /** Returns true on success. Refuses duplicate names (except for itself). */
+  function updateCategory(id, patch) {
+    const cats = getCategories();
+    const idx = cats.findIndex((c) => c.id === id);
+    if (idx === -1) return false;
+
+    const next = { id: cats[idx].id, name: cats[idx].name, icon: cats[idx].icon };
+
+    if (patch && typeof patch.name === 'string') {
+      const trimmed = patch.name.trim().slice(0, 24);
+      if (!trimmed) return false;
+      const dup = cats.some((c) => c.id !== id && c.name.toLowerCase() === trimmed.toLowerCase());
+      if (dup) return false;
+      next.name = trimmed;
+    }
+    if (patch && typeof patch.icon === 'string' && ICON_CHOICES.includes(patch.icon)) {
+      next.icon = patch.icon;
+    }
+
+    cats[idx] = next;
+    setCategories(cats);
+    return true;
+  }
+
+  /** Cannot delete the protected category. Returns true on success. */
+  function deleteCategory(id) {
+    if (id === PROTECTED_CATEGORY_ID) return false;
+    const cats = getCategories();
+    if (cats.length <= 1) return false;
+    const filtered = cats.filter((c) => c.id !== id);
+    if (filtered.length === cats.length) return false;
+    setCategories(filtered);
+    return true;
+  }
+
+  /* ---------- Category view mode (grid / list) ---------- */
+
+  function getCategoryView() {
+    const v = read(KEY_CAT_VIEW, 'grid');
+    return v === 'list' ? 'list' : 'grid';
+  }
+
+  function setCategoryView(v) {
+    if (v !== 'grid' && v !== 'list') return;
+    write(KEY_CAT_VIEW, v);
+  }
+
   /* ---------- Snapshot / restore ---------- */
 
   function snapshot() {
     return {
       theme: getTheme(),
       accent: getAccent(),
-      categories: getCategories()
+      categories: getCategories(),
+      categoryView: getCategoryView()
     };
   }
 
@@ -215,6 +262,9 @@
     if (Array.isArray(data.categories) && data.categories.length) {
       setCategories(data.categories);
     }
+    if (data.categoryView === 'grid' || data.categoryView === 'list') {
+      write(KEY_CAT_VIEW, data.categoryView);
+    }
     applyTheme();
   }
 
@@ -223,6 +273,8 @@
     PALETTE,
     DEFAULT_ACCENT,
     DEFAULT_CATEGORIES,
+    ICON_CHOICES,
+    PROTECTED_CATEGORY_ID,
     FALLBACK_CATEGORY,
     getTheme,
     resolvedTheme,
@@ -235,6 +287,11 @@
     getCategories,
     getCategory,
     setCategories,
+    addCategory,
+    updateCategory,
+    deleteCategory,
+    getCategoryView,
+    setCategoryView,
     snapshot,
     restore
   };
