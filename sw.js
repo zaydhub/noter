@@ -4,7 +4,7 @@
    network for normal operation.
    ============================================================ */
 
-const CACHE = 'noter-v1';
+const CACHE = 'noter-v2';
 
 const ASSETS = [
   './',
@@ -17,7 +17,9 @@ const ASSETS = [
   './js/search.js',
   './js/app.js',
   './icons/icon.svg',
-  './icons/icon-maskable.svg'
+  './icons/icon-maskable.svg',
+  './fonts/SF-Pro-Display-Regular.ttf',
+  './fonts/SF-Pro-Display-Bold.ttf'
 ];
 
 self.addEventListener('install', (event) => {
