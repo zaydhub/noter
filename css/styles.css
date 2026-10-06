@@ -179,7 +179,6 @@ textarea { resize: none; }
 .greeting-sub { margin: 5px 0 0; font-size: 16px; color: var(--text-2); letter-spacing: -0.01em; }
 .page-title { margin: 0; font-size: 30px; line-height: 1.14; font-weight: 700; letter-spacing: -0.028em; }
 
-/* NEW: header row with title + trailing actions, for Categories */
 .header-row {
   display: flex;
   align-items: center;
@@ -972,6 +971,12 @@ html[data-theme="dark"] .cat-list-item { border: 1px solid var(--border); }
 .sheet-backdrop[hidden] { display: none; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
+/* Top-anchored variant — used for sheets that contain a text input,
+   so the keyboard (which sticks to the bottom) doesn't cover them. */
+.sheet-backdrop--top {
+  align-items: flex-start;
+}
+
 .sheet {
   width: 100%;
   padding: 6px 10px calc(10px + var(--safe-bottom));
@@ -983,6 +988,13 @@ html[data-theme="dark"] .cat-list-item { border: 1px solid var(--border); }
   overflow-y: auto;
 }
 @keyframes sheetUp { from { transform: translateY(100%); } to { transform: none; } }
+
+.sheet-backdrop--top .sheet {
+  border-radius: 0 0 var(--r-lg) var(--r-lg);
+  padding: calc(var(--safe-top) + 6px) 10px 14px;
+  animation: sheetDown .3s var(--ease);
+}
+@keyframes sheetDown { from { transform: translateY(-100%); } to { transform: none; } }
 
 .sheet-handle { width: 36px; height: 5px; margin: 4px auto 10px; border-radius: 3px; background: var(--border-strong); }
 .sheet-title {
