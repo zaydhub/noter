@@ -1,0 +1,8 @@
+{
+  "appId": "com.zayd.noter",
+  "appName": "Noter",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}
