@@ -1,0 +1,70 @@
+name: Build Noter APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Prepare web files
+        run: |
+          mkdir -p www
+          cp index.html www/
+          cp manifest.json www/
+          cp sw.js www/
+          cp -r css www/
+          cp -r js www/
+          cp -r icons www/
+          mkdir -p www/fonts
+          if [ -d fonts ]; then cp fonts/*.ttf www/fonts/ 2>/dev/null || true; fi
+          if [ -f SF-Pro-Display-Regular.ttf ]; then cp SF-Pro-Display-Regular.ttf www/fonts/; fi
+          if [ -f SF-Pro-Display-Bold.ttf ]; then cp SF-Pro-Display-Bold.ttf www/fonts/; fi
+
+      - name: Install Capacitor Assets
+        run: npm install --no-save @capacitor/assets
+
+      - name: Prepare native icon source
+        run: |
+          mkdir -p assets
+          cp icon.png assets/icon.png
+
+      - name: Initialize Capacitor Android
+        run: npx cap add android
+
+      - name: Generate native Android icons
+        run: npx capacitor-assets generate --android
+
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Build APK
+        working-directory: android
+        run: ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Noter-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
