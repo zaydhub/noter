@@ -83,10 +83,9 @@
     lastFocused: null,
     closingEditor: false,
 
-    // Categories view
-    catDetail: null,      // null | { id: string | 'favorites', name: string }
-    catEditor: null,      // null | { mode: 'add'|'rename', categoryId: string|null, icon: string }
-    catSheetId: null,     // category id currently in the action sheet
+    catDetail: null,
+    catEditor: null,
+    catSheetId: null,
     catLongPressFired: false
   };
 
@@ -157,7 +156,7 @@
   }
 
   /* ==========================================================
-     Note row rendering (shared by home / search / category detail)
+     Note row rendering
      ========================================================== */
 
   function noteFlagsHtml(note) {
@@ -261,10 +260,6 @@
     container.innerHTML = html;
   }
 
-  /* ==========================================================
-     Home / Search
-     ========================================================== */
-
   function renderHome() {
     renderGrouped(
       el.homeList,
@@ -303,7 +298,6 @@
     const favoritesCount = NotesStore.favorites().length;
 
     if (detail) {
-      // --- Detail mode: show notes for a category or favorites ---
       el.catBack.hidden = false;
       el.catTitle.textContent = detail.name;
       el.catHeaderActions.hidden = true;
@@ -324,12 +318,10 @@
       return;
     }
 
-    // --- Main mode ---
     el.catBack.hidden = true;
     el.catTitle.textContent = 'Categories';
     el.catHeaderActions.hidden = false;
 
-    // Toggle icon flips to indicate the OTHER view you can switch to.
     const toggleIcon = view === 'grid' ? 'i-list' : 'i-grid';
     const toggleLabel = view === 'grid' ? 'Switch to list view' : 'Switch to grid view';
     el.catViewToggle.setAttribute('aria-label', toggleLabel);
@@ -337,13 +329,10 @@
       '<svg class="ico ico-20" aria-hidden="true"><use href="#' + toggleIcon + '"/></svg>';
 
     const cats = Settings.getCategories();
-
     let html = '';
 
-    // Favorites entry (always on top)
     html +=
-      '<button type="button" class="fav-entry" id="cat-favorites" ' +
-              'aria-label="Open favorites">' +
+      '<button type="button" class="fav-entry" id="cat-favorites" aria-label="Open favorites">' +
         '<span class="fav-entry-icon" aria-hidden="true">' +
           '<svg class="ico"><use href="#i-star"/></svg>' +
         '</span>' +
@@ -391,7 +380,7 @@
     el.catContent.innerHTML = html;
   }
 
-  function openCategoryDetail(id, name) {
+  function openCategoryDetail(id) {
     if (id === 'favorites') {
       state.catDetail = { id: 'favorites', name: 'Favorites' };
     } else {
@@ -411,7 +400,7 @@
   }
 
   /* ==========================================================
-     Category actions sheet (long-press)
+     Category actions sheet
      ========================================================== */
 
   function openCategoryActions(id) {
@@ -450,7 +439,7 @@
   }
 
   /* ==========================================================
-     Category editor sheet (add / rename)
+     Category editor sheet
      ========================================================== */
 
   function renderCategoryIconPicker() {
@@ -536,7 +525,6 @@
         showToast('That name is already in use');
         return;
       }
-      // If the currently open detail view is this category, update its title.
       if (state.catDetail && state.catDetail.id === ed.categoryId) {
         state.catDetail.name = name;
       }
@@ -1311,7 +1299,6 @@
     if (item) openEditor(item.dataset.id);
   }
 
-  /* ---- Long-press on category cards/rows ---- */
   let catPressTimer = null;
   let catPressTarget = null;
 
@@ -1350,15 +1337,12 @@
   }
 
   function catContentClick(e) {
-    // Favorites entry
     if (e.target.closest('#cat-favorites')) {
-      openCategoryDetail('favorites', 'Favorites');
+      openCategoryDetail('favorites');
       return;
     }
-    // Category card / row
     const hit = e.target.closest('[data-cat-id]');
     if (!hit) return;
-
     if (state.catLongPressFired) {
       state.catLongPressFired = false;
       return;
@@ -1388,7 +1372,6 @@
       list.addEventListener('scroll', () => { if (drag) resetDrag(); }, { passive: true });
     }
 
-    // Categories: long-press + click on cards/rows
     el.catContent.addEventListener('pointerdown', catPointerDown, { passive: true });
     el.catContent.addEventListener('pointermove', catPointerMove, { passive: true });
     el.catContent.addEventListener('pointerup', catPointerEnd);
@@ -1418,12 +1401,17 @@
       el.searchHeader.classList.toggle('is-scrolled', searchView.scrollTop > 2);
     }, { passive: true });
 
-    /* ---- Categories header ---- */
-    el.catBack.addEventListener('click', () => {
-      if (state.catDetail) {
-        if (overlayStack[overlayStack.length - 1] === 'cat-detail') history.back();
-        else closeCategoryDetail();
-      }
+    /* ---- Categories back button (FIXED: single tap) ---- */
+    el.catBack.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        if (overlayStack[overlayStack.length - 1] === 'cat-detail') {
+          overlayStack.pop();
+          history.replaceState({ noter: 'view' }, '');
+        }
+      } catch (err) {}
+      closeCategoryDetail();
     });
 
     el.catViewToggle.addEventListener('click', () => {
@@ -1434,7 +1422,6 @@
 
     el.catAdd.addEventListener('click', () => openCategoryEditor('add'));
 
-    /* ---- Category action sheet ---- */
     el.catSheetCancel.addEventListener('click', () => {
       if (overlayStack[overlayStack.length - 1] === 'cat-sheet') history.back();
       else closeCategoryActions();
@@ -1463,7 +1450,6 @@
       }
     });
 
-    /* ---- Category editor sheet ---- */
     el.catEditorCancel.addEventListener('click', () => {
       if (overlayStack[overlayStack.length - 1] === 'cat-editor') history.back();
       else closeCategoryEditor();
@@ -1551,7 +1537,6 @@
       scheduleEditorSave();
     });
 
-    /* ---- Note action sheet ---- */
     el.sheetCancel.addEventListener('click', () => {
       if (overlayStack[overlayStack.length - 1] === 'sheet') history.back();
       else closeSheet();
@@ -1578,7 +1563,6 @@
       else if (action === 'delete') deleteNote(id);
     });
 
-    /* ---- Confirm dialog ---- */
     el.dialogCancel.addEventListener('click', () => {
       if (overlayStack[overlayStack.length - 1] === 'dialog') history.back();
       else closeConfirm();
@@ -1590,14 +1574,12 @@
       if (e.target === el.dialogBackdrop) el.dialogCancel.click();
     });
 
-    /* ---- Toast ---- */
     el.toastAction.addEventListener('click', async () => {
       const fn = state.toastActionFn;
       hideToast();
       if (typeof fn === 'function') await fn();
     });
 
-    /* ---- Theme + accent ---- */
     el.themeSegmented.addEventListener('click', (e) => {
       const seg = e.target.closest('.seg');
       if (!seg) return;
