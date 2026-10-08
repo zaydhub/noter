@@ -53,6 +53,9 @@
   --accent-rgb:  255, 149, 0;
   --accent-soft: rgba(255,149,0,.14);
   --accent-ink:  #ffffff;
+
+  --btn-circle:       rgba(0,0,0,.055);
+  --btn-circle-press: rgba(0,0,0,.11);
 }
 
 html[data-theme="dark"] {
@@ -77,6 +80,9 @@ html[data-theme="dark"] {
   --accent-rgb:  255, 179, 64;
   --accent-soft: rgba(255,179,64,.16);
   --accent-ink:  #1c1c1e;
+
+  --btn-circle:       rgba(255,255,255,.075);
+  --btn-circle-press: rgba(255,255,255,.14);
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -836,7 +842,7 @@ html[data-theme="dark"] .cat-list-item { border: 1px solid var(--border); }
 .editor-bar-actions {
   display: flex;
   align-items: center;
-  gap: 0;
+  gap: 4px;
 }
 
 .editor-cats-bar {
@@ -857,6 +863,34 @@ html[data-theme="dark"] .cat-list-item { border: 1px solid var(--border); }
 .icon-btn:active { background: var(--surface-2); transform: scale(.9); }
 .icon-btn[aria-pressed="true"] { color: var(--accent); }
 .icon-btn[aria-pressed="true"] .ico { fill: currentColor; }
+
+/* Circular fill variant — used on the editor toolbar's three action
+   buttons. Gives them a permanent subtle pill so they read as buttons
+   at rest, and a soft accent/red tint when pin, favorite, or delete. */
+.icon-btn--circle {
+  border-radius: 50%;
+  background: var(--btn-circle);
+}
+.icon-btn--circle:active {
+  background: var(--btn-circle-press);
+  transform: scale(.93);
+}
+.icon-btn--circle[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.icon-btn--circle.icon-btn--danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.icon-btn--circle.icon-btn--danger:active {
+  background: rgba(255,59,48,.22);
+}
+.icon-btn--circle.icon-btn--danger[disabled] {
+  background: var(--btn-circle);
+  color: var(--text-3);
+  opacity: .55;
+}
 
 .icon-btn--danger { color: var(--danger); }
 .icon-btn--danger[disabled] { opacity: .25; pointer-events: none; }
@@ -945,15 +979,13 @@ html[data-theme="dark"] .cat-list-item { border: 1px solid var(--border); }
   white-space: nowrap;
   color: var(--text-2);
   background: var(--surface-2);
-  border: 1px solid transparent;
-  transition: background .16s ease, color .16s ease, border-color .16s ease;
+  transition: background .16s ease, color .16s ease;
 }
 .chip > span { display: inline-block; }
 .chip .chip-icon { width: 16px; height: 16px; flex: none; stroke-width: 2; }
 .chip[aria-checked="true"] {
   background: var(--accent-soft);
   color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 38%, transparent);
 }
 
 /* ============================================================
@@ -971,8 +1003,6 @@ html[data-theme="dark"] .cat-list-item { border: 1px solid var(--border); }
 .sheet-backdrop[hidden] { display: none; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-/* Top-anchored variant — used for sheets that contain a text input,
-   so the keyboard (which sticks to the bottom) doesn't cover them. */
 .sheet-backdrop--top {
   align-items: flex-start;
 }
