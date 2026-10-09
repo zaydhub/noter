@@ -165,8 +165,6 @@ textarea { resize: none; }
 .view.is-active { display: flex; }
 
 /* ---------- Headers ---------- */
-/* CHANGE: bigger top padding — matches the airy gap iOS puts between
-   the status bar / Dynamic Island and the large title. */
 .view-header {
   position: sticky;
   top: 0;
@@ -183,7 +181,6 @@ textarea { resize: none; }
 }
 .view-header--search.is-scrolled { border-bottom-color: var(--border); }
 
-/* CHANGE: 34px, iOS large-title scale (34pt). */
 .greeting {
   margin: 0;
   font-size: 34px;
@@ -325,6 +322,9 @@ html[data-theme="dark"] .note-item { border: 1px solid var(--border); }
 .swipe-btn--fav    { background: var(--fav);    color: #1c1c1e; }
 .swipe-btn--delete { background: var(--danger); }
 
+/* CHANGE: user-select: none stops Android's text-selection toolbar
+   from popping up on long-press. Long-press here is reserved for the
+   action sheet, not text selection. */
 .note-face {
   position: relative;
   z-index: 1;
@@ -338,6 +338,9 @@ html[data-theme="dark"] .note-item { border: 1px solid var(--border); }
   text-align: left;
   will-change: transform;
   transition: transform var(--dur) var(--ease);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 .note-item.is-dragging .note-face { transition: none; }
 .note-face:active { background: var(--surface-press); }
@@ -362,7 +365,6 @@ html[data-theme="dark"] .note-item { border: 1px solid var(--border); }
 }
 .note-title-row .note-title { flex: 1 1 auto; min-width: 0; }
 
-/* CHANGE: 17px, matching iOS body text. */
 .note-title {
   display: block;
   font-size: 17px;
@@ -495,7 +497,6 @@ html[data-theme="dark"] .tabbar { background: #161618; }
 html[data-theme="dark"] .card { border: 1px solid var(--border); }
 .row-sep { height: 1px; margin-left: 52px; background: var(--border); }
 
-/* CHANGE: 17px, matching iOS body text. */
 .row-btn {
   display: flex;
   align-items: center;
@@ -616,7 +617,6 @@ html[data-theme="dark"] .fav-entry { border: 1px solid var(--border); }
   color: var(--fav);
 }
 .fav-entry-icon .ico { width: 20px; height: 20px; fill: currentColor; stroke: none; }
-/* CHANGE: 17px body text. */
 .fav-entry-label {
   flex: 1 1 auto;
   min-width: 0;
@@ -662,7 +662,6 @@ html[data-theme="dark"] .cat-card { border: 1px solid var(--border); }
   color: var(--text-2);
 }
 .cat-card-icon .ico { width: 22px; height: 22px; stroke-width: 1.8; }
-/* CHANGE: 17px body text. */
 .cat-card-name {
   font-size: 17px;
   font-weight: 600;
@@ -709,7 +708,6 @@ html[data-theme="dark"] .cat-list-item { border: 1px solid var(--border); }
   color: var(--text-2);
 }
 .cat-list-icon .ico { width: 18px; height: 18px; stroke-width: 1.8; }
-/* CHANGE: 17px body text. */
 .cat-list-name {
   flex: 1 1 auto;
   min-width: 0;
@@ -1047,7 +1045,32 @@ html[data-theme="dark"] .cat-list-item { border: 1px solid var(--border); }
 }
 @keyframes sheetDown { from { transform: translateY(-100%); } to { transform: none; } }
 
-.sheet-handle { width: 36px; height: 5px; margin: 4px auto 10px; border-radius: 3px; background: var(--border-strong); }
+/* CHANGE: handle is now a proper drag target. The visible bar stays
+   small, but an invisible ::before extends the hit area ~150×40px so
+   fingers can grab it reliably. */
+.sheet-handle {
+  position: relative;
+  width: 36px;
+  height: 5px;
+  margin: 12px auto 12px;
+  border-radius: 3px;
+  background: var(--border-strong);
+  cursor: grab;
+  touch-action: none;
+}
+.sheet-handle::before {
+  content: "";
+  position: absolute;
+  top: -18px;
+  left: -60px;
+  right: -60px;
+  bottom: -18px;
+}
+.sheet-handle:active {
+  background: var(--text-3);
+  cursor: grabbing;
+}
+
 .sheet-title {
   padding: 0 8px 10px;
   font-size: 14px;
