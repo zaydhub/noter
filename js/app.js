@@ -436,6 +436,7 @@
   function closeCategoryActions() {
     el.catSheetBackdrop.hidden = true;
     state.catSheetId = null;
+    resetSheetStyles(el.catSheetBackdrop);
   }
 
   /* ==========================================================
@@ -501,6 +502,7 @@
   function closeCategoryEditor() {
     el.catEditorBackdrop.hidden = true;
     state.catEditor = null;
+    resetSheetStyles(el.catEditorBackdrop);
   }
 
   function saveCategoryEditor() {
@@ -512,19 +514,13 @@
 
     if (ed.mode === 'add') {
       const created = Settings.addCategory(name, ed.icon);
-      if (!created) {
-        showToast('That name is already in use');
-        return;
-      }
+      if (!created) { showToast('That name is already in use'); return; }
       closeCategoryEditor();
       renderCategoriesView();
       showToast('Category created');
     } else {
       const ok = Settings.updateCategory(ed.categoryId, { name, icon: ed.icon });
-      if (!ok) {
-        showToast('That name is already in use');
-        return;
-      }
+      if (!ok) { showToast('That name is already in use'); return; }
       if (state.catDetail && state.catDetail.id === ed.categoryId) {
         state.catDetail.name = name;
       }
@@ -561,10 +557,7 @@
       onConfirm: async () => {
         await NotesStore.reassignCategory(id, Settings.PROTECTED_CATEGORY_ID);
         const ok = Settings.deleteCategory(id);
-        if (!ok) {
-          showToast('Could not delete category');
-          return;
-        }
+        if (!ok) { showToast('Could not delete category'); return; }
         if (state.catDetail && state.catDetail.id === id) {
           state.catDetail = null;
         }
@@ -826,7 +819,7 @@
   }
 
   /* ==========================================================
-     Note action sheet
+     Note action sheet (simplified: pin / favorite / delete)
      ========================================================== */
 
   function sheetBtn(action, label, icon, danger) {
@@ -845,26 +838,11 @@
     state.sheetNoteId = id;
     el.sheetTitle.textContent = NotesStore.displayTitle(note) || 'Empty note';
 
-    const cats = Settings.getCategories();
     let html = '';
     html += sheetBtn('pin', note.pinned ? 'Unpin note' : 'Pin to top', 'i-pin', false);
     html += sheetBtn('fav', note.favorite ? 'Remove from favorites' : 'Add to favorites', 'i-star', false);
-
-    for (const c of cats) {
-      const checked = c.id === note.category;
-      html += (
-        '<button type="button" class="sheet-btn" data-sheet="cat" data-cat="' + escapeHtml(c.id) + '" ' +
-                'role="menuitemradio" aria-checked="' + (checked ? 'true' : 'false') + '">' +
-          '<svg class="ico sheet-cat-icon" aria-hidden="true"><use href="#' + escapeHtml(c.icon) + '"/></svg>' +
-          '<span style="flex:1">' + escapeHtml(c.name) + '</span>' +
-          (checked
-            ? '<svg class="ico ico-18" viewBox="0 0 24 24" style="color:var(--accent)"><use href="#i-check"/></svg>'
-            : '') +
-        '</button>'
-      );
-    }
-
     html += sheetBtn('delete', 'Delete note', 'i-trash', true);
+
     el.sheetActions.innerHTML = html;
     el.sheetBackdrop.hidden = false;
     pushOverlayHistory('sheet');
@@ -873,6 +851,7 @@
   function closeSheet() {
     el.sheetBackdrop.hidden = true;
     state.sheetNoteId = null;
+    resetSheetStyles(el.sheetBackdrop);
   }
 
   /* ==========================================================
@@ -1267,6 +1246,89 @@
   }
 
   /* ==========================================================
+     Sheet swipe-to-dismiss
+     ========================================================== */
+
+  function resetSheetStyles(backdropEl) {
+    if (!backdropEl) return;
+    const sheetEl = backdropEl.querySelector('.sheet');
+    if (!sheetEl) return;
+    sheetEl.style.transition = '';
+    sheetEl.style.transform = '';
+    sheetEl.style.opacity = '';
+  }
+
+  function wireSheetDrag(backdropEl) {
+    if (!backdropEl) return;
+    const sheetEl = backdropEl.querySelector('.sheet');
+    const handleEl = sheetEl ? sheetEl.querySelector('.sheet-handle') : null;
+    if (!sheetEl || !handleEl) return;
+
+    const isTop = backdropEl.classList.contains('sheet-backdrop--top');
+    let dragState = null;
+
+    handleEl.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      dragState = {
+        startY: e.clientY,
+        pointerId: e.pointerId,
+        height: sheetEl.offsetHeight
+      };
+      try { handleEl.setPointerCapture(e.pointerId); } catch (err) {}
+      sheetEl.style.transition = 'none';
+      e.preventDefault();
+    });
+
+    handleEl.addEventListener('pointermove', (e) => {
+      if (!dragState || e.pointerId !== dragState.pointerId) return;
+      let dy = e.clientY - dragState.startY;
+
+      // Resist movement in the "wrong" direction so the sheet doesn't
+      // detach into the middle of the screen.
+      if (isTop && dy > 0) dy = dy * 0.28;      // top sheet resisting downward
+      if (!isTop && dy < 0) dy = dy * 0.28;     // bottom sheet resisting upward
+
+      sheetEl.style.transform = 'translateY(' + dy + 'px)';
+      e.preventDefault();
+    });
+
+    handleEl.addEventListener('pointerup', (e) => {
+      if (!dragState || e.pointerId !== dragState.pointerId) return;
+      const dy = e.clientY - dragState.startY;
+      const d = dragState;
+      dragState = null;
+
+      const threshold = Math.min(120, d.height * 0.34);
+      // Top sheet: any meaningful vertical drag dismisses.
+      // Bottom sheet: only a downward drag dismisses.
+      const shouldDismiss = isTop
+        ? Math.abs(dy) > threshold
+        : dy > threshold;
+
+      if (shouldDismiss) {
+        const dir = isTop ? (dy < 0 ? -1 : 1) : 1;
+        sheetEl.style.transition = 'transform .22s cubic-bezier(.32,.72,0,1), opacity .22s ease';
+        sheetEl.style.transform = 'translateY(' + (dir * (d.height + 80)) + 'px)';
+        sheetEl.style.opacity = '0';
+        setTimeout(() => {
+          const cancel = sheetEl.querySelector('.sheet-cancel');
+          if (cancel) cancel.click();
+        }, 190);
+      } else {
+        sheetEl.style.transition = 'transform .24s cubic-bezier(.32,.72,0,1)';
+        sheetEl.style.transform = '';
+        setTimeout(() => { sheetEl.style.transition = ''; }, 260);
+      }
+    });
+
+    handleEl.addEventListener('pointercancel', () => {
+      dragState = null;
+      sheetEl.style.transition = '';
+      sheetEl.style.transform = '';
+    });
+  }
+
+  /* ==========================================================
      Event wiring
      ========================================================== */
 
@@ -1350,6 +1412,51 @@
     openCategoryDetail(hit.dataset.catId);
   }
 
+  /* --- Cancel-button helpers that close synchronously --- */
+  function dismissCategoryEditor() {
+    try {
+      if (overlayStack[overlayStack.length - 1] === 'cat-editor') overlayStack.pop();
+      // The parent category sheet was visually hidden when this editor opened,
+      // so its stack entry is stale — remove it too so back behaviour stays clean.
+      if (overlayStack[overlayStack.length - 1] === 'cat-sheet' && el.catSheetBackdrop.hidden) {
+        overlayStack.pop();
+        state.catSheetId = null;
+      }
+      history.replaceState({ noter: 'view' }, '');
+    } catch (e) {}
+    closeCategoryEditor();
+  }
+
+  function dismissCategoryActions() {
+    try {
+      if (overlayStack[overlayStack.length - 1] === 'cat-sheet') {
+        overlayStack.pop();
+        history.replaceState({ noter: 'view' }, '');
+      }
+    } catch (e) {}
+    closeCategoryActions();
+  }
+
+  function dismissNoteSheet() {
+    try {
+      if (overlayStack[overlayStack.length - 1] === 'sheet') {
+        overlayStack.pop();
+        history.replaceState({ noter: 'view' }, '');
+      }
+    } catch (e) {}
+    closeSheet();
+  }
+
+  function dismissConfirm() {
+    try {
+      if (overlayStack[overlayStack.length - 1] === 'dialog') {
+        overlayStack.pop();
+        history.replaceState({ noter: 'view' }, '');
+      }
+    } catch (e) {}
+    closeConfirm();
+  }
+
   function wireEvents() {
     el.tabbar.addEventListener('click', (e) => {
       const tab = e.target.closest('.tab');
@@ -1370,6 +1477,11 @@
       list.addEventListener('pointerup', onPointerUp);
       list.addEventListener('pointercancel', onPointerUp);
       list.addEventListener('scroll', () => { if (drag) resetDrag(); }, { passive: true });
+      list.addEventListener('contextmenu', (ev) => {
+        if (ev.target.closest && ev.target.closest('.note-face')) {
+          ev.preventDefault();
+        }
+      });
     }
 
     el.catContent.addEventListener('pointerdown', catPointerDown, { passive: true });
@@ -1401,7 +1513,7 @@
       el.searchHeader.classList.toggle('is-scrolled', searchView.scrollTop > 2);
     }, { passive: true });
 
-    /* ---- Categories back button (FIXED: single tap) ---- */
+    /* ---- Categories back button ---- */
     el.catBack.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -1422,13 +1534,11 @@
 
     el.catAdd.addEventListener('click', () => openCategoryEditor('add'));
 
-    el.catSheetCancel.addEventListener('click', () => {
-      if (overlayStack[overlayStack.length - 1] === 'cat-sheet') history.back();
-      else closeCategoryActions();
-    });
+    /* ---- Category action sheet ---- */
+    el.catSheetCancel.addEventListener('click', dismissCategoryActions);
 
     el.catSheetBackdrop.addEventListener('click', (e) => {
-      if (e.target === el.catSheetBackdrop) el.catSheetCancel.click();
+      if (e.target === el.catSheetBackdrop) dismissCategoryActions();
     });
 
     el.catSheetActions.addEventListener('click', (e) => {
@@ -1439,24 +1549,36 @@
       if (!id) return;
 
       if (action === 'rename') {
+        // Pop the sheet's stack entry cleanly before opening the editor,
+        // so nothing stale is left behind for the back button.
+        try {
+          if (overlayStack[overlayStack.length - 1] === 'cat-sheet') {
+            overlayStack.pop();
+            history.replaceState({ noter: 'view' }, '');
+          }
+        } catch (err) {}
         closeCategoryActions();
         openCategoryEditor('rename', id);
         return;
       }
       if (action === 'delete') {
+        try {
+          if (overlayStack[overlayStack.length - 1] === 'cat-sheet') {
+            overlayStack.pop();
+            history.replaceState({ noter: 'view' }, '');
+          }
+        } catch (err) {}
         closeCategoryActions();
         requestDeleteCategory(id);
         return;
       }
     });
 
-    el.catEditorCancel.addEventListener('click', () => {
-      if (overlayStack[overlayStack.length - 1] === 'cat-editor') history.back();
-      else closeCategoryEditor();
-    });
+    /* ---- Category editor sheet ---- */
+    el.catEditorCancel.addEventListener('click', dismissCategoryEditor);
 
     el.catEditorBackdrop.addEventListener('click', (e) => {
-      if (e.target === el.catEditorBackdrop) el.catEditorCancel.click();
+      if (e.target === el.catEditorBackdrop) dismissCategoryEditor();
     });
 
     el.catEditorSave.addEventListener('click', saveCategoryEditor);
@@ -1537,13 +1659,11 @@
       scheduleEditorSave();
     });
 
-    el.sheetCancel.addEventListener('click', () => {
-      if (overlayStack[overlayStack.length - 1] === 'sheet') history.back();
-      else closeSheet();
-    });
+    /* ---- Note action sheet ---- */
+    el.sheetCancel.addEventListener('click', dismissNoteSheet);
 
     el.sheetBackdrop.addEventListener('click', (e) => {
-      if (e.target === el.sheetBackdrop) el.sheetCancel.click();
+      if (e.target === el.sheetBackdrop) dismissNoteSheet();
     });
 
     el.sheetActions.addEventListener('click', async (e) => {
@@ -1552,26 +1672,28 @@
       const action = btn.dataset.sheet;
       const id = state.sheetNoteId;
       if (!id) return;
-      if (action === 'cat') {
-        await setCategory(id, btn.dataset.cat);
-        closeSheet();
-        return;
-      }
+
+      // Pop the sheet's stack entry cleanly BEFORE running the action.
+      try {
+        if (overlayStack[overlayStack.length - 1] === 'sheet') {
+          overlayStack.pop();
+          history.replaceState({ noter: 'view' }, '');
+        }
+      } catch (err) {}
       closeSheet();
+
       if (action === 'pin') await togglePin(id);
       else if (action === 'fav') await toggleFavorite(id);
       else if (action === 'delete') deleteNote(id);
     });
 
-    el.dialogCancel.addEventListener('click', () => {
-      if (overlayStack[overlayStack.length - 1] === 'dialog') history.back();
-      else closeConfirm();
-    });
+    /* ---- Confirm dialog ---- */
+    el.dialogCancel.addEventListener('click', dismissConfirm);
 
     el.dialogConfirm.addEventListener('click', runDialogAction);
 
     el.dialogBackdrop.addEventListener('click', (e) => {
-      if (e.target === el.dialogBackdrop) el.dialogCancel.click();
+      if (e.target === el.dialogBackdrop) dismissConfirm();
     });
 
     el.toastAction.addEventListener('click', async () => {
@@ -1629,6 +1751,11 @@
     Settings.onThemeChange(() => {
       renderAccentSwatches();
     });
+
+    /* ---- Sheet swipe-to-dismiss ---- */
+    wireSheetDrag(el.sheetBackdrop);
+    wireSheetDrag(el.catSheetBackdrop);
+    wireSheetDrag(el.catEditorBackdrop);
   }
 
   /* ==========================================================
