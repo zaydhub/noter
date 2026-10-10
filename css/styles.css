@@ -86,6 +86,7 @@ html[data-theme="dark"] {
 }
 
 *, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { height: 100%; margin: 0; padding: 0; }
 html { -webkit-text-size-adjust: 100%; }
 
@@ -244,13 +245,12 @@ textarea { resize: none; }
 }
 .date-strip::-webkit-scrollbar { display: none; }
 
-/* CHANGE: square chips. width = height. tighter radius. */
 .date-chip {
   flex: none;
-  width: 60px;
-  height: 60px;
+  width: 62px;
+  height: 62px;
   padding: 0;
-  border-radius: 12px;
+  border-radius: 16px;
   background: var(--surface);
   border: 1px solid rgba(0,0,0,.05);
   display: flex;
@@ -264,7 +264,6 @@ textarea { resize: none; }
 }
 .date-chip:active { transform: scale(.95); }
 
-/* CHANGE: weekday text is now regular weight, not bold. */
 .date-chip-day {
   font-size: 12px;
   font-weight: 400;
@@ -339,7 +338,13 @@ html[data-theme="dark"] .date-chip {
   font-weight: 600;
   color: var(--text-2);
   letter-spacing: -0.008em;
+  text-align: left;
+  padding: 4px 2px;
+  margin: -4px -2px;
+  border-radius: 6px;
+  transition: color .14s ease;
 }
+.all-notes-label:active { color: var(--text); }
 .all-notes-sort {
   display: inline-flex;
   align-items: center;
@@ -372,7 +377,7 @@ html[data-theme="dark"] .date-chip {
 .group-title {
   margin: 0 0 8px 6px;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: .07em;
   text-transform: uppercase;
   color: var(--text-3);
@@ -527,7 +532,7 @@ html[data-theme="dark"] .note-item { border: 1px solid var(--border); }
   margin-bottom: 14px;
 }
 .empty-ico .ico { width: 28px; height: 28px; stroke-width: 1.7; }
-.empty-title { margin: 0; font-size: 20px; font-weight: 650; letter-spacing: -0.02em; color: var(--text); }
+.empty-title { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.02em; color: var(--text); }
 .empty-sub { margin: 0; max-width: 260px; font-size: 15px; line-height: 1.45; color: var(--text-2); }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
@@ -579,7 +584,7 @@ html[data-theme="dark"] .tabbar { background: #161618; }
 .section-title {
   margin: 0 0 8px 6px;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: .07em;
   text-transform: uppercase;
   color: var(--text-3);
@@ -829,7 +834,7 @@ html[data-theme="dark"] .cat-list-item { border: 1px solid var(--border); }
 .cat-editor-title {
   margin: 0 0 16px;
   font-size: 18px;
-  font-weight: 650;
+  font-weight: 600;
   text-align: center;
   letter-spacing: -0.02em;
   color: var(--text);
@@ -915,7 +920,7 @@ html[data-theme="dark"] .cat-list-item { border: 1px solid var(--border); }
   color: var(--accent-ink);
 }
 .about-mark-svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 40; stroke-linecap: round; stroke-linejoin: round; }
-.about-name { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -0.02em; }
+.about-name { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.02em; }
 .about-meta { margin: 3px 0 0; font-size: 15px; color: var(--text-2); }
 .about-note { margin: 0; padding: 14px 16px 16px; font-size: 15px; line-height: 1.5; color: var(--text-2); }
 .footer-note {
@@ -1153,7 +1158,7 @@ html[data-theme="dark"] .cat-list-item { border: 1px solid var(--border); }
 .sheet-title {
   padding: 0 8px 10px;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-2);
   text-align: center;
   white-space: nowrap;
@@ -1215,15 +1220,15 @@ html[data-theme="dark"] .cat-list-item { border: 1px solid var(--border); }
   animation: dialogIn .24s var(--ease);
 }
 @keyframes dialogIn { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
-.dialog-title { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: -0.02em; }
-.dialog-msg { margin: 6px 0 18px; font-size: 15px; line-height: 1.45; color: var(--text-2); }
+.dialog-title { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.02em; }
+.dialog-msg { margin: 6px 0 18px; font-size: 14px; line-height: 1.45; color: var(--text-2); }
 .dialog-actions { display: flex; gap: 8px; }
 .dialog-btn {
   flex: 1;
   height: 46px;
   border-radius: 12px;
   font-size: 17px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: -0.014em;
   background: var(--surface-2);
   transition: filter .14s ease;
@@ -1240,13 +1245,14 @@ html[data-theme="dark"] .cat-list-item { border: 1px solid var(--border); }
   align-items: center;
   justify-content: center;
   gap: 10px;
-  max-width: calc(100vw - 32px);
+  max-width: calc(100vw - 48px);
   padding: 12px 18px;
   border-radius: 14px;
   background: rgba(28,28,30,.95);
   color: #fff;
   font-size: 15px;
   letter-spacing: -0.01em;
+  text-align: center;
   box-shadow: var(--shadow-lg);
   transform: translateX(-50%);
   animation: toastIn .26s var(--ease);
@@ -1254,14 +1260,14 @@ html[data-theme="dark"] .cat-list-item { border: 1px solid var(--border); }
 html[data-theme="dark"] .toast { background: rgba(58,58,60,.97); border: 1px solid var(--border); }
 .toast[hidden] { display: none; }
 @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
-.toast-msg { flex: 0 1 auto; }
+.toast-msg { flex: 0 1 auto; text-align: center; }
 .toast-action {
   flex: none;
   padding: 6px 12px;
   margin-right: -6px;
   border-radius: 9px;
   font-size: 15px;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--accent);
 }
 .toast-action:active { background: rgba(255,255,255,.12); }
