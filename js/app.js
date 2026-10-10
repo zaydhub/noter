@@ -7,6 +7,13 @@
   const $  = (sel, root) => (root || document).querySelector(sel);
   const $$ = (sel, root) => Array.prototype.slice.call((root || document).querySelectorAll(sel));
 
+  const Cap = global.Capacitor;
+  const isCapacitor = !!(Cap && typeof Cap.isNativePlatform === 'function' && Cap.isNativePlatform());
+  const capPlugins = (Cap && Cap.Plugins) || {};
+  const capApp = capPlugins.App || null;
+  const capFilesystem = capPlugins.Filesystem || null;
+  const capShare = capPlugins.Share || null;
+
   const el = {
     metaTheme:      $('#meta-theme-color'),
     views:          $$('.view'),
@@ -105,7 +112,9 @@
     catLongPressFired: false,
 
     homeDate: null,
-    homeDateInitialized: false
+    homeDateInitialized: false,
+
+    searchExpanded: false
   };
 
   /* ==========================================================
@@ -199,7 +208,6 @@
     }
     if (state.homeDate === null) state.homeDate = todayMid;
 
-    // Full current month, 1st → last day.
     const ref = new Date(todayMid);
     const year = ref.getFullYear();
     const month = ref.getMonth();
@@ -220,7 +228,6 @@
     }
     el.homeDateStrip.innerHTML = html;
 
-    // Center the selected chip in the visible strip.
     requestAnimationFrame(() => {
       if (!el.homeDateStrip) return;
       const target = el.homeDateStrip.querySelector('.date-chip.is-selected');
@@ -387,10 +394,23 @@
     const hasQuery = !!query.trim();
     el.searchClear.hidden = !query;
 
+    // Sort label
     const sortLabel = SORT_LABELS[Settings.getSort()] || 'Newest';
     el.allNotesSortLabel.textContent = sortLabel;
-    el.allNotesLabel.textContent = hasQuery ? 'Results' : 'All notes';
 
+    // Label + sort visibility
+    if (hasQuery) {
+      el.allNotesLabel.textContent = 'Results';
+      el.allNotesSort.classList.remove('is-hidden');
+    } else if (state.searchExpanded) {
+      el.allNotesLabel.textContent = 'All notes';
+      el.allNotesSort.classList.remove('is-hidden');
+    } else {
+      el.allNotesLabel.textContent = 'See all notes';
+      el.allNotesSort.classList.add('is-hidden');
+    }
+
+    // Body
     if (hasQuery) {
       const results = Search.run(query, NotesStore.notes);
       if (!results.length) {
@@ -400,6 +420,13 @@
         return;
       }
       renderFlat(el.searchList, applySort(results), '');
+      return;
+    }
+
+    if (!state.searchExpanded) {
+      el.searchList.innerHTML = emptyStateHtml(
+        'i-search', 'Search your notes', 'Find notes by title, content, or category.'
+      );
       return;
     }
 
@@ -680,6 +707,7 @@
       title: 'Delete “' + cat.name + '”?',
       message: msg,
       confirmLabel: 'Delete',
+      destructive: true,
       onConfirm: async () => {
         await NotesStore.reassignCategory(id, Settings.PROTECTED_CATEGORY_ID);
         const ok = Settings.deleteCategory(id);
@@ -912,6 +940,7 @@
       title: 'Delete this note?',
       message: 'You can undo this right after.',
       confirmLabel: 'Delete',
+      destructive: true,
       onConfirm: async () => {
         const item = document.querySelector('.note-item[data-id="' + cssEscape(id) + '"]');
         if (item && !opts.skipAnimation) {
@@ -961,8 +990,11 @@
 
   function requestConfirm(opts) {
     el.dialogTitle.textContent = opts.title || 'Are you sure?';
-    el.dialogMsg.textContent = opts.message || '';
+    const msg = opts.message || '';
+    el.dialogMsg.textContent = msg;
+    el.dialogMsg.hidden = !msg;
     el.dialogConfirm.textContent = opts.confirmLabel || 'Confirm';
+    el.dialogConfirm.classList.toggle('dialog-btn--danger', !!opts.destructive);
     state.dialogAction = opts.onConfirm || null;
     el.dialogBackdrop.hidden = false;
     el.dialogConfirm.focus({ preventScroll: true });
@@ -978,6 +1010,20 @@
     const fn = state.dialogAction;
     closeConfirm();
     if (typeof fn === 'function') await fn();
+  }
+
+  function showExitConfirm() {
+    requestConfirm({
+      title: 'Exit Noter?',
+      message: '',
+      confirmLabel: 'Exit',
+      destructive: true,
+      onConfirm: () => {
+        if (capApp && typeof capApp.exitApp === 'function') {
+          try { capApp.exitApp(); } catch (e) {}
+        }
+      }
+    });
   }
 
   /* ==========================================================
@@ -1195,6 +1241,7 @@
       title: 'Delete this note?',
       message: 'You can undo this right after.',
       confirmLabel: 'Delete',
+      destructive: true,
       onConfirm: async () => {
         await NotesStore.remove(id);
         state.editor = null;
@@ -1210,14 +1257,24 @@
   }
 
   /* ==========================================================
-     Back button
+     History / back button
      ========================================================== */
 
   const overlayStack = [];
 
+  function pushHistory(kind) {
+    if (isCapacitor) return;
+    try { history.pushState({ noter: kind, depth: overlayStack.length }, ''); } catch (e) {}
+  }
+
+  function replaceHistory(kind) {
+    if (isCapacitor) return;
+    try { history.replaceState({ noter: kind }, ''); } catch (e) {}
+  }
+
   function pushOverlayHistory(kind) {
     overlayStack.push(kind);
-    try { history.pushState({ noter: kind, depth: overlayStack.length }, ''); } catch (e) {}
+    pushHistory(kind);
   }
 
   function popOverlayHistory() {
@@ -1247,7 +1304,7 @@
 
     if (state.view !== 'home') {
       switchView('home');
-      try { history.pushState({ noter: 'home' }, ''); } catch (e) {}
+      pushHistory('home');
       return true;
     }
     return false;
@@ -1258,7 +1315,7 @@
       handleBack();
     } else if (state.view !== 'home') {
       switchView('home');
-      try { history.replaceState({ noter: 'home' }, ''); } catch (e) {}
+      replaceHistory('home');
     }
   });
 
@@ -1267,16 +1324,40 @@
      ========================================================== */
 
   async function exportBackup() {
+    const payload = {
+      app: 'noter', version: 1,
+      exportedAt: new Date().toISOString(),
+      notes: NotesStore.sorted(),
+      settings: Settings.snapshot()
+    };
+    const json = JSON.stringify(payload, null, 2);
+    const stamp = new Date().toISOString().slice(0, 10);
+    const filename = 'noter-backup-' + stamp + '.json';
+
+    // 1. Native (Capacitor) — write to cache and open the system share sheet.
+    if (capFilesystem && capShare) {
+      try {
+        const written = await capFilesystem.writeFile({
+          path: filename,
+          data: json,
+          directory: 'CACHE',
+          encoding: 'utf8'
+        });
+        await capShare.share({
+          title: 'Noter backup',
+          dialogTitle: 'Save or share backup',
+          url: written.uri
+        });
+        return;
+      } catch (err) {
+        const msg = String((err && err.message) || '').toLowerCase();
+        if (msg.indexOf('cancel') !== -1 || msg.indexOf('abort') !== -1) return;
+        // Fall through to web path on unexpected errors.
+      }
+    }
+
+    // 2. Web Share API with files.
     try {
-      const payload = {
-        app: 'noter', version: 1,
-        exportedAt: new Date().toISOString(),
-        notes: NotesStore.sorted(),
-        settings: Settings.snapshot()
-      };
-      const json = JSON.stringify(payload, null, 2);
-      const stamp = new Date().toISOString().slice(0, 10);
-      const filename = 'noter-backup-' + stamp + '.json';
       const blob = new Blob([json], { type: 'application/json' });
       const file = new File([blob], filename, { type: 'application/json' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -1287,6 +1368,8 @@
           if (err && err.name === 'AbortError') return;
         }
       }
+
+      // 3. Browser download fallback.
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -1295,7 +1378,6 @@
       a.click();
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 4000);
-      showToast('Backup exported (' + payload.notes.length + ' notes)');
     } catch (err) {
       showToast('Export failed');
     }
@@ -1578,7 +1660,7 @@
         overlayStack.pop();
         state.catSheetId = null;
       }
-      history.replaceState({ noter: 'view' }, '');
+      replaceHistory('view');
     } catch (e) {}
     closeCategoryEditor();
   }
@@ -1587,7 +1669,7 @@
     try {
       if (overlayStack[overlayStack.length - 1] === 'cat-sheet') {
         overlayStack.pop();
-        history.replaceState({ noter: 'view' }, '');
+        replaceHistory('view');
       }
     } catch (e) {}
     closeCategoryActions();
@@ -1597,7 +1679,7 @@
     try {
       if (overlayStack[overlayStack.length - 1] === 'sheet') {
         overlayStack.pop();
-        history.replaceState({ noter: 'view' }, '');
+        replaceHistory('view');
       }
     } catch (e) {}
     closeSheet();
@@ -1607,7 +1689,7 @@
     try {
       if (overlayStack[overlayStack.length - 1] === 'sort-sheet') {
         overlayStack.pop();
-        history.replaceState({ noter: 'view' }, '');
+        replaceHistory('view');
       }
     } catch (e) {}
     closeSortSheet();
@@ -1617,7 +1699,7 @@
     try {
       if (overlayStack[overlayStack.length - 1] === 'dialog') {
         overlayStack.pop();
-        history.replaceState({ noter: 'view' }, '');
+        replaceHistory('view');
       }
     } catch (e) {}
     closeConfirm();
@@ -1630,7 +1712,7 @@
       const name = tab.dataset.tab;
       if (!name || name === state.view) return;
       switchView(name);
-      try { history.pushState({ noter: 'view', view: name }, ''); } catch (err) {}
+      pushHistory('view');
     });
 
     el.fab.addEventListener('click', () => openEditor(null));
@@ -1687,6 +1769,11 @@
       el.searchInput.focus({ preventScroll: true });
     });
 
+    el.allNotesLabel.addEventListener('click', () => {
+      state.searchExpanded = !state.searchExpanded;
+      renderSearch();
+    });
+
     el.allNotesSort.addEventListener('click', openSortSheet);
 
     const searchView = $('#view-search');
@@ -1700,7 +1787,7 @@
       try {
         if (overlayStack[overlayStack.length - 1] === 'cat-detail') {
           overlayStack.pop();
-          history.replaceState({ noter: 'view' }, '');
+          replaceHistory('view');
         }
       } catch (err) {}
       closeCategoryDetail();
@@ -1730,7 +1817,7 @@
         try {
           if (overlayStack[overlayStack.length - 1] === 'cat-sheet') {
             overlayStack.pop();
-            history.replaceState({ noter: 'view' }, '');
+            replaceHistory('view');
           }
         } catch (err) {}
         closeCategoryActions();
@@ -1741,7 +1828,7 @@
         try {
           if (overlayStack[overlayStack.length - 1] === 'cat-sheet') {
             overlayStack.pop();
-            history.replaceState({ noter: 'view' }, '');
+            replaceHistory('view');
           }
         } catch (err) {}
         closeCategoryActions();
@@ -1788,7 +1875,7 @@
       try {
         if (overlayStack[overlayStack.length - 1] === 'editor') {
           overlayStack.pop();
-          history.replaceState({ noter: 'view' }, '');
+          replaceHistory('view');
         }
       } catch (err) {}
       closeEditor();
@@ -1857,7 +1944,7 @@
       try {
         if (overlayStack[overlayStack.length - 1] === 'sheet') {
           overlayStack.pop();
-          history.replaceState({ noter: 'view' }, '');
+          replaceHistory('view');
         }
       } catch (err) {}
       closeSheet();
@@ -1934,6 +2021,15 @@
     wireSheetDrag(el.catSheetBackdrop);
     wireSheetDrag(el.catEditorBackdrop);
     wireSheetDrag(el.sortSheetBackdrop);
+
+    // Native Android back button — Capacitor App plugin.
+    if (capApp && typeof capApp.addListener === 'function') {
+      try {
+        capApp.addListener('backButton', () => {
+          if (!handleBack()) showExitConfirm();
+        });
+      } catch (e) {}
+    }
   }
 
   /* ==========================================================
@@ -1962,10 +2058,12 @@
     renderAll();
     wireEvents();
 
-    try {
-      history.replaceState({ noter: 'home' }, '');
-      history.pushState({ noter: 'home' }, '');
-    } catch (e) {}
+    if (!isCapacitor) {
+      try {
+        history.replaceState({ noter: 'home' }, '');
+        history.pushState({ noter: 'home' }, '');
+      } catch (e) {}
+    }
 
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && !state.editor) {
