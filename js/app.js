@@ -15,11 +15,16 @@
     fab:            $('#fab'),
     greetingTitle:  $('#greeting-title'),
     greetingSub:    $('#greeting-sub'),
+    homeDate:       $('#home-date'),
+    homeDateStrip:  $('#home-date-strip'),
     homeList:       $('#home-list'),
     searchList:     $('#search-list'),
     searchInput:    $('#search-input'),
     searchClear:    $('#search-clear'),
     searchHeader:   $('.view-header--search'),
+    allNotesLabel:  $('#all-notes-label'),
+    allNotesSort:   $('#all-notes-sort'),
+    allNotesSortLabel: $('#all-notes-sort-label'),
 
     catBack:        $('#cat-back'),
     catTitle:       $('#cat-title'),
@@ -59,6 +64,10 @@
     catEditorCancel: $('#cat-editor-cancel'),
     catEditorSave:  $('#cat-editor-save'),
 
+    sortSheetBackdrop: $('#sort-sheet-backdrop'),
+    sortSheetActions:  $('#sort-sheet-actions'),
+    sortSheetCancel:   $('#sort-sheet-cancel'),
+
     dialogBackdrop: $('#dialog-backdrop'),
     dialogTitle:    $('#dialog-title'),
     dialogMsg:      $('#dialog-msg'),
@@ -70,6 +79,13 @@
     toastAction:    $('#toast-action'),
 
     importFile:     $('#import-file')
+  };
+
+  const SORT_LABELS = {
+    newest: 'Newest',
+    oldest: 'Oldest',
+    az: 'A–Z',
+    za: 'Z–A'
   };
 
   const state = {
@@ -86,7 +102,10 @@
     catDetail: null,
     catEditor: null,
     catSheetId: null,
-    catLongPressFired: false
+    catLongPressFired: false,
+
+    homeDate: null, // midnight timestamp of the selected day
+    homeDateInitialized: false
   };
 
   /* ==========================================================
@@ -144,6 +163,16 @@
     return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
+  function longDate(ts) {
+    return new Date(ts).toLocaleDateString(undefined, {
+      weekday: 'long', month: 'long', day: 'numeric'
+    });
+  }
+
+  function shortWeekday(ts) {
+    return new Date(ts).toLocaleDateString(undefined, { weekday: 'short' });
+  }
+
   function updateGreeting() {
     const h = new Date().getHours();
     let greeting;
@@ -153,6 +182,37 @@
     else greeting = 'Good night';
     el.greetingTitle.textContent = greeting + ', Zayd';
     el.greetingSub.textContent = 'What’s on your mind?';
+    if (el.homeDate) el.homeDate.textContent = longDate(Date.now());
+  }
+
+  /* ==========================================================
+     Home date strip
+     ========================================================== */
+
+  function renderDateStrip() {
+    const todayMid = startOfDay(Date.now());
+    if (!state.homeDateInitialized) {
+      state.homeDate = todayMid;
+      state.homeDateInitialized = true;
+    }
+    if (state.homeDate === null) state.homeDate = todayMid;
+
+    const offsets = [-2, -1, 0, 1, 2];
+    let html = '';
+    for (const offset of offsets) {
+      const ts = todayMid + offset * DAY;
+      const isToday = offset === 0;
+      const isSelected = ts === state.homeDate;
+      const classes = 'date-chip' + (isSelected ? ' is-selected' : '');
+      html += (
+        '<button type="button" class="' + classes + '" data-day="' + ts + '" ' +
+                'role="tab" aria-selected="' + (isSelected ? 'true' : 'false') + '">' +
+          '<span class="date-chip-day">' + escapeHtml(shortWeekday(ts)) + '</span>' +
+          '<span class="date-chip-num">' + new Date(ts).getDate() + '</span>' +
+        '</button>'
+      );
+    }
+    el.homeDateStrip.innerHTML = html;
   }
 
   /* ==========================================================
@@ -260,31 +320,84 @@
     container.innerHTML = html;
   }
 
+  /* ==========================================================
+     Sorting helpers
+     ========================================================== */
+
+  function applySort(notes) {
+    const mode = Settings.getSort();
+    const copy = notes.slice();
+
+    // Pinned notes always float to the top regardless of sort mode.
+    copy.sort((a, b) => {
+      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+
+      if (mode === 'az' || mode === 'za') {
+        const at = (NotesStore.displayTitle(a) || '').toLowerCase();
+        const bt = (NotesStore.displayTitle(b) || '').toLowerCase();
+        const cmp = at.localeCompare(bt);
+        return mode === 'az' ? cmp : -cmp;
+      }
+      if (mode === 'oldest') return a.updatedAt - b.updatedAt;
+      // newest (default)
+      return b.updatedAt - a.updatedAt;
+    });
+    return copy;
+  }
+
+  /* ==========================================================
+     Home + Search
+     ========================================================== */
+
   function renderHome() {
+    const dayStart = state.homeDate != null ? state.homeDate : startOfDay(Date.now());
+    const dayEnd = dayStart + DAY;
+
+    const todays = NotesStore.notes.filter((n) => {
+      // Use updatedAt for the day filter. Simple, predictable.
+      return n.updatedAt >= dayStart && n.updatedAt < dayEnd;
+    });
+
+    const sorted = NotesStore.sorted(todays); // pinned first, then recent
+
     renderGrouped(
       el.homeList,
-      NotesStore.sorted(),
-      emptyStateHtml('i-home', 'No notes yet', 'Tap + to start writing something.')
+      sorted,
+      emptyStateHtml('i-home', 'No notes for this day', 'Tap + to start writing something.')
     );
   }
 
   function renderSearch() {
     const query = el.searchInput.value;
+    const hasQuery = !!query.trim();
     el.searchClear.hidden = !query;
-    if (!query.trim()) {
+
+    // Update the sort pill label
+    const sortLabel = SORT_LABELS[Settings.getSort()] || 'Newest';
+    el.allNotesSortLabel.textContent = sortLabel;
+    el.allNotesLabel.textContent = hasQuery ? 'Results' : 'All notes';
+
+    if (hasQuery) {
+      const results = Search.run(query, NotesStore.notes);
+      if (!results.length) {
+        el.searchList.innerHTML = emptyStateHtml(
+          'i-search', 'No notes found', 'Try a different word or check the spelling.'
+        );
+        return;
+      }
+      renderFlat(el.searchList, applySort(results), '');
+      return;
+    }
+
+    // No query → show all notes, sorted
+    const all = applySort(NotesStore.notes);
+    if (!all.length) {
       el.searchList.innerHTML = emptyStateHtml(
-        'i-search', 'Search your notes', 'Find notes by title, content, or category.'
+        'i-search', 'No notes yet', 'Tap + to start writing something.'
       );
       return;
     }
-    const results = Search.run(query, NotesStore.notes);
-    if (!results.length) {
-      el.searchList.innerHTML = emptyStateHtml(
-        'i-search', 'No notes found', 'Try a different word or check the spelling.'
-      );
-      return;
-    }
-    renderFlat(el.searchList, results, '');
+    renderFlat(el.searchList, all, '');
   }
 
   /* ==========================================================
@@ -569,6 +682,40 @@
   }
 
   /* ==========================================================
+     Sort sheet
+     ========================================================== */
+
+  function renderSortSheet() {
+    const current = Settings.getSort();
+    const options = Settings.SORTS;
+    let html = '';
+    for (const opt of options) {
+      const checked = opt === current;
+      html += (
+        '<button type="button" class="sheet-btn" role="menuitemradio" ' +
+                'data-sort="' + opt + '" aria-checked="' + (checked ? 'true' : 'false') + '">' +
+          '<span style="flex:1">' + escapeHtml(SORT_LABELS[opt] || opt) + '</span>' +
+          (checked
+            ? '<svg class="ico ico-18" viewBox="0 0 24 24" style="color:var(--accent)"><use href="#i-check"/></svg>'
+            : '') +
+        '</button>'
+      );
+    }
+    el.sortSheetActions.innerHTML = html;
+  }
+
+  function openSortSheet() {
+    renderSortSheet();
+    el.sortSheetBackdrop.hidden = false;
+    pushOverlayHistory('sort-sheet');
+  }
+
+  function closeSortSheet() {
+    el.sortSheetBackdrop.hidden = true;
+    resetSheetStyles(el.sortSheetBackdrop);
+  }
+
+  /* ==========================================================
      Navigation
      ========================================================== */
 
@@ -593,6 +740,8 @@
       renderCategoriesView();
     } else if (name === 'more') {
       renderAccentSwatches();
+    } else if (name === 'search') {
+      renderSearch();
     }
   }
 
@@ -819,7 +968,7 @@
   }
 
   /* ==========================================================
-     Note action sheet (simplified: pin / favorite / delete)
+     Note action sheet
      ========================================================== */
 
   function sheetBtn(action, label, icon, danger) {
@@ -1070,12 +1219,14 @@
     if (kind === 'editor' && state.editor) { closeEditor(); return true; }
     if (kind === 'sheet') { closeSheet(); return true; }
     if (kind === 'dialog') { closeConfirm(); return true; }
+    if (kind === 'sort-sheet') { closeSortSheet(); return true; }
     if (kind === 'cat-detail') { closeCategoryDetail(); return true; }
     if (kind === 'cat-sheet') { closeCategoryActions(); return true; }
     if (kind === 'cat-editor') { closeCategoryEditor(); return true; }
 
     if (state.catEditor) { closeCategoryEditor(); return true; }
     if (state.catSheetId) { closeCategoryActions(); return true; }
+    if (!el.sortSheetBackdrop.hidden) { closeSortSheet(); return true; }
     if (state.catDetail) { closeCategoryDetail(); return true; }
     if (state.editor) { closeEditor(); return true; }
     if (!el.dialogBackdrop.hidden) { closeConfirm(); return true; }
@@ -1172,6 +1323,7 @@
           renderAll();
           syncThemeUI();
           renderAccentSwatches();
+          renderDateStrip();
           const parts = [];
           if (result.added) parts.push(result.added + ' added');
           if (result.updated) parts.push(result.updated + ' updated');
@@ -1282,12 +1434,8 @@
     handleEl.addEventListener('pointermove', (e) => {
       if (!dragState || e.pointerId !== dragState.pointerId) return;
       let dy = e.clientY - dragState.startY;
-
-      // Resist movement in the "wrong" direction so the sheet doesn't
-      // detach into the middle of the screen.
-      if (isTop && dy > 0) dy = dy * 0.28;      // top sheet resisting downward
-      if (!isTop && dy < 0) dy = dy * 0.28;     // bottom sheet resisting upward
-
+      if (isTop && dy > 0) dy = dy * 0.28;
+      if (!isTop && dy < 0) dy = dy * 0.28;
       sheetEl.style.transform = 'translateY(' + dy + 'px)';
       e.preventDefault();
     });
@@ -1299,8 +1447,6 @@
       dragState = null;
 
       const threshold = Math.min(120, d.height * 0.34);
-      // Top sheet: any meaningful vertical drag dismisses.
-      // Bottom sheet: only a downward drag dismisses.
       const shouldDismiss = isTop
         ? Math.abs(dy) > threshold
         : dy > threshold;
@@ -1412,12 +1558,9 @@
     openCategoryDetail(hit.dataset.catId);
   }
 
-  /* --- Cancel-button helpers that close synchronously --- */
   function dismissCategoryEditor() {
     try {
       if (overlayStack[overlayStack.length - 1] === 'cat-editor') overlayStack.pop();
-      // The parent category sheet was visually hidden when this editor opened,
-      // so its stack entry is stale — remove it too so back behaviour stays clean.
       if (overlayStack[overlayStack.length - 1] === 'cat-sheet' && el.catSheetBackdrop.hidden) {
         overlayStack.pop();
         state.catSheetId = null;
@@ -1445,6 +1588,16 @@
       }
     } catch (e) {}
     closeSheet();
+  }
+
+  function dismissSortSheet() {
+    try {
+      if (overlayStack[overlayStack.length - 1] === 'sort-sheet') {
+        overlayStack.pop();
+        history.replaceState({ noter: 'view' }, '');
+      }
+    } catch (e) {}
+    closeSortSheet();
   }
 
   function dismissConfirm() {
@@ -1484,6 +1637,18 @@
       });
     }
 
+    /* ---- Home date strip ---- */
+    el.homeDateStrip.addEventListener('click', (e) => {
+      const chip = e.target.closest('.date-chip');
+      if (!chip) return;
+      const ts = Number(chip.dataset.day);
+      if (!Number.isFinite(ts)) return;
+      if (state.homeDate === ts) return;
+      state.homeDate = ts;
+      renderDateStrip();
+      renderHome();
+    });
+
     el.catContent.addEventListener('pointerdown', catPointerDown, { passive: true });
     el.catContent.addEventListener('pointermove', catPointerMove, { passive: true });
     el.catContent.addEventListener('pointerup', catPointerEnd);
@@ -1507,6 +1672,8 @@
       renderSearch();
       el.searchInput.focus({ preventScroll: true });
     });
+
+    el.allNotesSort.addEventListener('click', openSortSheet);
 
     const searchView = $('#view-search');
     searchView.addEventListener('scroll', () => {
@@ -1549,8 +1716,6 @@
       if (!id) return;
 
       if (action === 'rename') {
-        // Pop the sheet's stack entry cleanly before opening the editor,
-        // so nothing stale is left behind for the back button.
         try {
           if (overlayStack[overlayStack.length - 1] === 'cat-sheet') {
             overlayStack.pop();
@@ -1596,6 +1761,19 @@
       if (!opt || !state.catEditor) return;
       state.catEditor.icon = opt.dataset.icon;
       renderCategoryIconPicker();
+    });
+
+    /* ---- Sort sheet ---- */
+    el.sortSheetCancel.addEventListener('click', dismissSortSheet);
+    el.sortSheetBackdrop.addEventListener('click', (e) => {
+      if (e.target === el.sortSheetBackdrop) dismissSortSheet();
+    });
+    el.sortSheetActions.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-sort]');
+      if (!btn) return;
+      Settings.setSort(btn.dataset.sort);
+      closeSortSheet();
+      renderSearch();
     });
 
     /* ---- Note editor ---- */
@@ -1673,7 +1851,6 @@
       const id = state.sheetNoteId;
       if (!id) return;
 
-      // Pop the sheet's stack entry cleanly BEFORE running the action.
       try {
         if (overlayStack[overlayStack.length - 1] === 'sheet') {
           overlayStack.pop();
@@ -1735,6 +1912,7 @@
       if (e.key !== 'Escape') return;
       if (state.catEditor) { closeCategoryEditor(); return; }
       if (state.catSheetId) { closeCategoryActions(); return; }
+      if (!el.sortSheetBackdrop.hidden) { closeSortSheet(); return; }
       if (state.editor) { closeEditor(); return; }
       if (!el.dialogBackdrop.hidden) { closeConfirm(); return; }
       if (!el.sheetBackdrop.hidden) { closeSheet(); }
@@ -1752,10 +1930,10 @@
       renderAccentSwatches();
     });
 
-    /* ---- Sheet swipe-to-dismiss ---- */
     wireSheetDrag(el.sheetBackdrop);
     wireSheetDrag(el.catSheetBackdrop);
     wireSheetDrag(el.catEditorBackdrop);
+    wireSheetDrag(el.sortSheetBackdrop);
   }
 
   /* ==========================================================
@@ -1767,6 +1945,7 @@
     syncThemeUI();
     renderAccentSwatches();
     updateGreeting();
+    renderDateStrip();
     setInterval(updateGreeting, 60000);
 
     try {
@@ -1791,6 +1970,15 @@
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && !state.editor) {
         updateGreeting();
+        // Roll the strip forward if the day changed while we were away.
+        const todayMid = startOfDay(Date.now());
+        if (state.homeDateInitialized && state.homeDate != null) {
+          const selectedOffset = Math.round((state.homeDate - todayMid) / DAY);
+          if (selectedOffset < -2 || selectedOffset > 2) {
+            state.homeDate = todayMid;
+            renderDateStrip();
+          }
+        }
         renderAll();
       }
     });
