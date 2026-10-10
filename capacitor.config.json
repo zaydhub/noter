@@ -1,19 +1,8 @@
 {
-  "name": "noter",
-  "version": "1.0.0",
-  "private": true,
-  "description": "Noter - Fast, offline-first notes",
-  "scripts": {
-    "build": "echo Noter build complete"
-  },
-  "dependencies": {
-    "@capacitor/android": "^7.4.3",
-    "@capacitor/app": "^7.0.0",
-    "@capacitor/core": "^7.4.3",
-    "@capacitor/filesystem": "^7.1.0",
-    "@capacitor/share": "^7.0.0"
-  },
-  "devDependencies": {
-    "@capacitor/cli": "^7.4.3"
+  "appId": "com.zayd.noter",
+  "appName": "Noter",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
   }
 }
