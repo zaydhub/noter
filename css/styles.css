@@ -142,7 +142,6 @@ textarea { resize: none; }
 .ico-22 { width: 22px; height: 22px; }
 .ico-26 { width: 26px; height: 26px; stroke-width: 2.2; }
 
-/* ---------- App shell ---------- */
 .app {
   position: relative;
   height: 100dvh;
@@ -164,7 +163,6 @@ textarea { resize: none; }
 }
 .view.is-active { display: flex; }
 
-/* ---------- Headers ---------- */
 .view-header {
   position: sticky;
   top: 0;
@@ -243,16 +241,16 @@ textarea { resize: none; }
   overflow-y: hidden;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
-  scroll-snap-type: x proximity;
 }
 .date-strip::-webkit-scrollbar { display: none; }
 
+/* CHANGE: square chips. width = height. tighter radius. */
 .date-chip {
   flex: none;
-  width: 58px;
-  min-height: 66px;
-  padding: 8px 4px;
-  border-radius: 14px;
+  width: 60px;
+  height: 60px;
+  padding: 0;
+  border-radius: 12px;
   background: var(--surface);
   border: 1px solid rgba(0,0,0,.05);
   display: flex;
@@ -262,21 +260,21 @@ textarea { resize: none; }
   gap: 1px;
   text-align: center;
   color: var(--text);
-  scroll-snap-align: center;
   transition: background .16s ease, color .16s ease, transform .16s var(--ease), border-color .16s ease;
 }
 .date-chip:active { transform: scale(.95); }
 
+/* CHANGE: weekday text is now regular weight, not bold. */
 .date-chip-day {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--text-2);
   letter-spacing: -0.005em;
   line-height: 1.1;
 }
 .date-chip-num {
   font-size: 22px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
@@ -299,7 +297,6 @@ html[data-theme="dark"] .date-chip {
   color: var(--bg);
 }
 
-/* ---------- Search field ---------- */
 .search-field {
   display: flex;
   align-items: center;
@@ -329,7 +326,6 @@ html[data-theme="dark"] .date-chip {
 }
 .search-clear:active { opacity: .6; }
 
-/* ---------- All-notes bar (Search) ---------- */
 .all-notes-bar {
   display: flex;
   align-items: center;
@@ -365,7 +361,6 @@ html[data-theme="dark"] .date-chip {
   color: var(--text-3);
 }
 
-/* ---------- List roots ---------- */
 .list-root {
   flex: 1 1 auto;
   padding: 0 16px calc(var(--tabbar-h) + var(--safe-bottom) + 92px);
@@ -373,7 +368,6 @@ html[data-theme="dark"] .date-chip {
 .view-header + .list-root { padding-top: 6px; }
 .view-header--title + .list-root { padding-top: 6px; }
 
-/* ---------- Group ---------- */
 .group + .group { margin-top: 22px; }
 .group-title {
   margin: 0 0 8px 6px;
@@ -385,7 +379,6 @@ html[data-theme="dark"] .date-chip {
 }
 .cat-section-title { margin-top: 18px; }
 
-/* ---------- Note rows ---------- */
 .note-list {
   list-style: none;
   margin: 0;
@@ -516,7 +509,6 @@ html[data-theme="dark"] .note-item { border: 1px solid var(--border); }
 .note-item.is-removing { animation: rowOut .22s var(--ease) forwards; }
 @keyframes rowOut { to { opacity: 0; transform: scale(.96); max-height: 0; margin-top: -8px; } }
 
-/* ---------- Empty states ---------- */
 .empty {
   display: flex;
   flex-direction: column;
@@ -539,7 +531,6 @@ html[data-theme="dark"] .note-item { border: 1px solid var(--border); }
 .empty-sub { margin: 0; max-width: 260px; font-size: 15px; line-height: 1.45; color: var(--text-2); }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
-/* ---------- FAB ---------- */
 .fab {
   position: absolute;
   right: 18px;
@@ -556,7 +547,6 @@ html[data-theme="dark"] .note-item { border: 1px solid var(--border); }
 .fab:active { transform: scale(.9); }
 .fab.is-hidden { opacity: 0; transform: scale(.5); pointer-events: none; }
 
-/* ---------- Tab bar ---------- */
 .tabbar {
   position: relative;
   z-index: 30;
@@ -585,7 +575,6 @@ html[data-theme="dark"] .tabbar { background: #161618; }
 .tab:active .ico { transform: scale(.9); }
 .tab.is-active { color: var(--accent); }
 
-/* ---------- Sections (More) ---------- */
 .section { padding: 0 16px; margin-top: 22px; }
 .section-title {
   margin: 0 0 8px 6px;
@@ -626,7 +615,6 @@ html[data-theme="dark"] .card { border: 1px solid var(--border); }
 .row-label { flex: 1 1 auto; min-width: 0; }
 .row-chev { color: var(--text-3); flex: none; }
 
-/* ---------- Segmented control ---------- */
 .segmented {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -653,7 +641,6 @@ html[data-theme="dark"] .card { border: 1px solid var(--border); }
 .seg[aria-checked="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
 html[data-theme="dark"] .seg[aria-checked="true"] { background: var(--surface-press); }
 
-/* ---------- Accent swatch picker ---------- */
 .swatch-picker { padding: 12px 16px 16px; }
 .swatch-label {
   margin: 0 0 10px 4px;
@@ -699,7 +686,6 @@ html[data-theme="dark"] .seg[aria-checked="true"] { background: var(--surface-pr
 .swatch[aria-checked="true"] .swatch-check { opacity: 1; }
 .swatch-check .ico { width: 16px; height: 16px; stroke-width: 2.6; }
 
-/* ---------- Categories: favorites entry ---------- */
 .fav-entry {
   display: flex;
   align-items: center;
@@ -739,7 +725,6 @@ html[data-theme="dark"] .fav-entry { border: 1px solid var(--border); }
   flex: none;
 }
 
-/* ---------- Categories: grid view ---------- */
 .cat-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -785,7 +770,6 @@ html[data-theme="dark"] .cat-card { border: 1px solid var(--border); }
   margin-top: -4px;
 }
 
-/* ---------- Categories: list view ---------- */
 .cat-list {
   display: flex;
   flex-direction: column;
@@ -839,7 +823,6 @@ html[data-theme="dark"] .cat-list-item { border: 1px solid var(--border); }
   color: var(--text-3);
 }
 
-/* ---------- Categories: editor sheet ---------- */
 .cat-editor {
   padding: 8px 16px 16px;
 }
@@ -921,7 +904,6 @@ html[data-theme="dark"] .cat-list-item { border: 1px solid var(--border); }
   pointer-events: none;
 }
 
-/* ---------- About ---------- */
 .about { display: flex; align-items: center; gap: 13px; padding: 16px; }
 .about-mark {
   flex: none;
@@ -944,9 +926,6 @@ html[data-theme="dark"] .cat-list-item { border: 1px solid var(--border); }
   color: var(--text-3);
 }
 
-/* ============================================================
-   EDITOR
-   ============================================================ */
 .editor {
   position: fixed;
   inset: 0;
@@ -1078,7 +1057,6 @@ html[data-theme="dark"] .cat-list-item { border: 1px solid var(--border); }
 .editor.is-view-mode .editor-title,
 .editor.is-view-mode .editor-content { cursor: text; }
 
-/* ---------- Category chips ---------- */
 .cat-scroller {
   display: flex;
   gap: 7px;
@@ -1116,9 +1094,6 @@ html[data-theme="dark"] .cat-list-item { border: 1px solid var(--border); }
   color: var(--accent);
 }
 
-/* ============================================================
-   ACTION SHEET
-   ============================================================ */
 .sheet-backdrop {
   position: fixed;
   inset: 0;
@@ -1218,9 +1193,6 @@ html[data-theme="dark"] .cat-list-item { border: 1px solid var(--border); }
 }
 .sheet-cancel:active { background: var(--surface-press); }
 
-/* ============================================================
-   DIALOG
-   ============================================================ */
 .dialog-backdrop {
   position: fixed;
   inset: 0;
@@ -1259,9 +1231,6 @@ html[data-theme="dark"] .cat-list-item { border: 1px solid var(--border); }
 .dialog-btn:active { filter: brightness(.93); }
 .dialog-btn--danger { background: var(--danger); color: #fff; }
 
-/* ============================================================
-   TOAST
-   ============================================================ */
 .toast {
   position: fixed;
   left: 50%;
@@ -1297,9 +1266,6 @@ html[data-theme="dark"] .toast { background: rgba(58,58,60,.97); border: 1px sol
 }
 .toast-action:active { background: rgba(255,255,255,.12); }
 
-/* ============================================================
-   Responsive
-   ============================================================ */
 @media (min-width: 620px) {
   .list-root, .section { padding-left: max(16px, calc((100% - 620px) / 2)); padding-right: max(16px, calc((100% - 620px) / 2)); }
   .view-header { padding-left: max(20px, calc((100% - 620px) / 2)); padding-right: max(20px, calc((100% - 620px) / 2)); }
