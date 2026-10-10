@@ -1,5 +1,5 @@
 /* ============================================================
-   Noter — settings (theme, accent, categories)
+   Noter — settings (theme, accent, categories, sort)
    ============================================================ */
 (function (global) {
   'use strict';
@@ -8,7 +8,9 @@
   const KEY_ACCENT = 'noter.accent';
   const KEY_CATS   = 'noter.categories';
   const KEY_CAT_VIEW = 'noter.categoryView';
+  const KEY_SORT   = 'noter.sort';
   const THEMES = ['light', 'dark', 'system'];
+  const SORTS = ['newest', 'oldest', 'az', 'za'];
 
   const PALETTE = [
     { id: 'orange', name: 'Orange', light: { bg: '#ff9500', ink: '#ffffff' }, dark: { bg: '#ffb340', ink: '#1c1c1e' } },
@@ -179,7 +181,6 @@
            Math.random().toString(36).slice(2, 6);
   }
 
-  /** Returns the new category, or null if the name is empty/duplicate. */
   function addCategory(name, icon) {
     const trimmed = String(name || '').trim().slice(0, 24);
     if (!trimmed) return null;
@@ -195,7 +196,6 @@
     return cat;
   }
 
-  /** Returns true on success. Refuses duplicate names (except for itself). */
   function updateCategory(id, patch) {
     const cats = getCategories();
     const idx = cats.findIndex((c) => c.id === id);
@@ -219,7 +219,6 @@
     return true;
   }
 
-  /** Cannot delete the protected category. Returns true on success. */
   function deleteCategory(id) {
     if (id === PROTECTED_CATEGORY_ID) return false;
     const cats = getCategories();
@@ -230,7 +229,7 @@
     return true;
   }
 
-  /* ---------- Category view mode (grid / list) ---------- */
+  /* ---------- Category view mode ---------- */
 
   function getCategoryView() {
     const v = read(KEY_CAT_VIEW, 'grid');
@@ -242,6 +241,18 @@
     write(KEY_CAT_VIEW, v);
   }
 
+  /* ---------- Sort preference (All notes) ---------- */
+
+  function getSort() {
+    const v = read(KEY_SORT, 'newest');
+    return SORTS.includes(v) ? v : 'newest';
+  }
+
+  function setSort(v) {
+    if (!SORTS.includes(v)) return;
+    write(KEY_SORT, v);
+  }
+
   /* ---------- Snapshot / restore ---------- */
 
   function snapshot() {
@@ -249,7 +260,8 @@
       theme: getTheme(),
       accent: getAccent(),
       categories: getCategories(),
-      categoryView: getCategoryView()
+      categoryView: getCategoryView(),
+      sort: getSort()
     };
   }
 
@@ -265,11 +277,15 @@
     if (data.categoryView === 'grid' || data.categoryView === 'list') {
       write(KEY_CAT_VIEW, data.categoryView);
     }
+    if (typeof data.sort === 'string' && SORTS.includes(data.sort)) {
+      write(KEY_SORT, data.sort);
+    }
     applyTheme();
   }
 
   global.Settings = {
     THEMES,
+    SORTS,
     PALETTE,
     DEFAULT_ACCENT,
     DEFAULT_CATEGORIES,
@@ -292,6 +308,8 @@
     deleteCategory,
     getCategoryView,
     setCategoryView,
+    getSort,
+    setSort,
     snapshot,
     restore
   };
