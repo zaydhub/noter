@@ -30,7 +30,7 @@ jobs:
           cp sw.js www/
           cp -r css www/
           cp -r js www/
-          cp -r icons www/
+          cp -r icons.png www/
           mkdir -p www/fonts
           if [ -d fonts ]; then cp fonts/*.ttf www/fonts/ 2>/dev/null || true; fi
           if [ -f SF-Pro-Display-Regular.ttf ]; then cp SF-Pro-Display-Regular.ttf www/fonts/; fi
