@@ -250,7 +250,7 @@ textarea { resize: none; }
   width: 62px;
   height: 62px;
   padding: 0;
-  border-radius: 16px;
+  border-radius: 22px;
   background: var(--surface);
   border: 1px solid rgba(0,0,0,.05);
   display: flex;
