@@ -49,7 +49,7 @@ jobs:
         run: npx cap add android
 
       - name: Generate native Android icons
-        run: npx capacitor-assets generate --android
+        run: npx capacitor-assets generate --android --iconBackgroundColor '#ffffff' --iconBackgroundColorDark '#ffffff'
 
       - name: Sync Capacitor
         run: npx cap sync android
