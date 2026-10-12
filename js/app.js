@@ -40,9 +40,21 @@
     catAdd:         $('#cat-add'),
     catContent:     $('#cat-content'),
 
+    /* More sub-views */
+    moreMain:            $('#more-main'),
+    moreAppearance:      $('#more-appearance'),
+    moreAccent:          $('#more-accent'),
+    moreAppearanceValue: $('#more-appearance-value'),
+    moreAccentSwatch:    $('#more-accent-swatch'),
+    moreAppearanceBack:  $('#more-appearance-back'),
+    moreAccentBack:      $('#more-accent-back'),
+
     themeSegmented: $('#theme-segmented'),
     accentSwatches: $('#accent-swatches'),
     storageNote:    $('#storage-note'),
+
+    aboutToggle:    $('#about-toggle'),
+    aboutBody:      $('#about-body'),
 
     editor:         $('#editor'),
     editorBack:     $('#editor-back'),
@@ -95,14 +107,18 @@
     za: 'Z–A'
   };
 
+  const THEME_LABELS = {
+    light: 'Light',
+    dark: 'Dark',
+    system: 'System'
+  };
+
   const state = {
     view: 'home',
     editor: null,
-    openSwipeId: null,
     sheetNoteId: null,
     dialogAction: null,
     toastTimer: null,
-    toastActionFn: null,
     lastFocused: null,
     closingEditor: false,
 
@@ -114,7 +130,10 @@
     homeDate: null,
     homeDateInitialized: false,
 
-    searchExpanded: false
+    searchExpanded: false,
+
+    /* More page sub-view: 'main' | 'appearance' | 'accent' */
+    moreSub: 'main'
   };
 
   /* ==========================================================
@@ -269,24 +288,6 @@
 
     return (
       '<li class="note-item" data-id="' + escapeHtml(note.id) + '">' +
-        '<div class="note-swipe" aria-hidden="true">' +
-          '<div class="swipe-side">' +
-            '<button type="button" class="swipe-btn swipe-btn--pin" data-swipe="pin" tabindex="-1">' +
-              '<svg class="ico ico-20" viewBox="0 0 24 24"><use href="#i-pin"/></svg>' +
-              '<span>' + (note.pinned ? 'Unpin' : 'Pin') + '</span>' +
-            '</button>' +
-            '<button type="button" class="swipe-btn swipe-btn--fav" data-swipe="fav" tabindex="-1">' +
-              '<svg class="ico ico-20" viewBox="0 0 24 24"><use href="#i-star"/></svg>' +
-              '<span>' + (note.favorite ? 'Unfav' : 'Favorite') + '</span>' +
-            '</button>' +
-          '</div>' +
-          '<div class="swipe-side">' +
-            '<button type="button" class="swipe-btn swipe-btn--delete" data-swipe="delete" tabindex="-1">' +
-              '<svg class="ico ico-20" viewBox="0 0 24 24"><use href="#i-trash"/></svg>' +
-              '<span>Delete</span>' +
-            '</button>' +
-          '</div>' +
-        '</div>' +
         '<div class="note-face" role="button" tabindex="0" aria-label="' + escapeHtml(aria) + '">' +
           '<span class="note-icon" aria-hidden="true">' +
             '<svg class="ico"><use href="#' + escapeHtml(cat.icon) + '"/></svg>' +
@@ -394,11 +395,9 @@
     const hasQuery = !!query.trim();
     el.searchClear.hidden = !query;
 
-    // Sort label
     const sortLabel = SORT_LABELS[Settings.getSort()] || 'Newest';
     el.allNotesSortLabel.textContent = sortLabel;
 
-    // Label + sort visibility
     if (hasQuery) {
       el.allNotesLabel.textContent = 'Results';
       el.allNotesSort.classList.remove('is-hidden');
@@ -410,7 +409,6 @@
       el.allNotesSort.classList.add('is-hidden');
     }
 
-    // Body
     if (hasQuery) {
       const results = Search.run(query, NotesStore.notes);
       if (!results.length) {
@@ -757,6 +755,50 @@
   }
 
   /* ==========================================================
+     More page sub-navigation
+     ========================================================== */
+
+  function showMoreSub(name) {
+    if (state.moreSub === name) return;
+    state.moreSub = name;
+    el.moreMain.hidden       = name !== 'main';
+    el.moreAppearance.hidden = name !== 'appearance';
+    el.moreAccent.hidden     = name !== 'accent';
+
+    if (name === 'appearance' || name === 'accent') {
+      pushOverlayHistory('more-sub');
+    }
+
+    if (name === 'main') updateMoreValues();
+    if (name === 'accent') renderAccentSwatches();
+  }
+
+  function updateMoreValues() {
+    if (el.moreAppearanceValue) {
+      el.moreAppearanceValue.textContent = THEME_LABELS[Settings.getTheme()] || 'System';
+    }
+    if (el.moreAccentSwatch) {
+      const resolved = Settings.resolvedTheme();
+      const accent = Settings.PALETTE.find((p) => p.id === Settings.getAccent()) || Settings.PALETTE[0];
+      const mode = resolved === 'dark' ? accent.dark : accent.light;
+      el.moreAccentSwatch.style.background = mode.bg;
+    }
+  }
+
+  function isMoreSubOpen() {
+    return state.moreSub !== 'main';
+  }
+
+  function closeMoreSub() {
+    if (state.moreSub === 'main') return;
+    state.moreSub = 'main';
+    el.moreMain.hidden = false;
+    el.moreAppearance.hidden = true;
+    el.moreAccent.hidden = true;
+    updateMoreValues();
+  }
+
+  /* ==========================================================
      Navigation
      ========================================================== */
 
@@ -772,7 +814,6 @@
       else tab.removeAttribute('aria-current');
     }
 
-    closeSwipe();
     if (name !== 'search' && document.activeElement === el.searchInput) el.searchInput.blur();
     el.fab.classList.toggle('is-hidden', name === 'more' || name === 'categories');
 
@@ -780,121 +821,11 @@
       state.catDetail = null;
       renderCategoriesView();
     } else if (name === 'more') {
-      renderAccentSwatches();
+      closeMoreSub();
+      updateMoreValues();
     } else if (name === 'search') {
       renderSearch();
     }
-  }
-
-  /* ==========================================================
-     Swipe gestures (notes)
-     ========================================================== */
-
-  const SWIPE_WIDTH = 76;
-  const SWIPE_MAX = SWIPE_WIDTH * 2;
-  const DRAG_THRESHOLD = 8;
-  let drag = null;
-
-  function cssEscape(value) {
-    if (global.CSS && typeof CSS.escape === 'function') return CSS.escape(value);
-    return String(value).replace(/["\\]/g, '\\$&');
-  }
-
-  function closeSwipe(exceptId) {
-    if (!state.openSwipeId || state.openSwipeId === exceptId) return;
-    const item = document.querySelector('.note-item[data-id="' + cssEscape(state.openSwipeId) + '"]');
-    if (item) {
-      const face = item.querySelector('.note-face');
-      if (face) face.style.transform = '';
-      item.classList.remove('is-open');
-    }
-    state.openSwipeId = null;
-  }
-
-  function onPointerDown(e) {
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
-    const face = e.target.closest && e.target.closest('.note-face');
-    if (!face) return;
-    const item = face.closest('.note-item');
-    if (!item) return;
-    drag = {
-      item, face,
-      id: item.dataset.id,
-      startX: e.clientX, startY: e.clientY,
-      baseX: item.classList.contains('is-open')
-        ? (item.dataset.openSide === 'right' ? -SWIPE_MAX : SWIPE_WIDTH) : 0,
-      dx: 0, axis: null,
-      pointerId: e.pointerId,
-      moved: false,
-      longPressTimer: setTimeout(() => {
-        if (drag && !drag.moved) {
-          drag.longPressed = true;
-          openSheet(drag.id);
-          resetDrag();
-        }
-      }, 480)
-    };
-  }
-
-  function onPointerMove(e) {
-    if (!drag || e.pointerId !== drag.pointerId) return;
-    const dx = e.clientX - drag.startX;
-    const dy = e.clientY - drag.startY;
-    if (!drag.moved && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) {
-      drag.moved = true;
-      clearTimeout(drag.longPressTimer);
-    }
-    if (drag.axis === null) {
-      if (Math.abs(dx) < DRAG_THRESHOLD && Math.abs(dy) < DRAG_THRESHOLD) return;
-      drag.axis = Math.abs(dx) > Math.abs(dy) * 1.4 ? 'x' : 'y';
-      if (drag.axis === 'x') {
-        drag.item.classList.add('is-dragging');
-        if (drag.item.setPointerCapture) {
-          try { drag.item.setPointerCapture(e.pointerId); } catch (err) {}
-        }
-      } else { return; }
-    }
-    if (drag.axis !== 'x') return;
-    e.preventDefault();
-    let next = drag.baseX + dx;
-    if (next > SWIPE_MAX) next = SWIPE_MAX + (next - SWIPE_MAX) * 0.28;
-    if (next < -SWIPE_MAX) next = -SWIPE_MAX + (next + SWIPE_MAX) * 0.28;
-    drag.dx = next;
-    drag.face.style.transform = 'translate3d(' + next + 'px,0,0)';
-  }
-
-  function onPointerUp(e) {
-    if (!drag || e.pointerId !== drag.pointerId) return;
-    clearTimeout(drag.longPressTimer);
-    const d = drag;
-    if (d.axis === 'x') {
-      const item = d.item;
-      item.classList.remove('is-dragging');
-      let settle = 0, side = null;
-      if (d.dx >= SWIPE_WIDTH * 0.55) { settle = SWIPE_WIDTH; side = 'left'; }
-      else if (d.dx <= -SWIPE_WIDTH * 0.55) { settle = -SWIPE_WIDTH; side = 'right'; }
-      if (settle === 0) {
-        d.face.style.transform = '';
-        item.classList.remove('is-open');
-        delete item.dataset.openSide;
-        if (state.openSwipeId === d.id) state.openSwipeId = null;
-      } else {
-        closeSwipe(d.id);
-        d.face.style.transform = 'translate3d(' + settle + 'px,0,0)';
-        item.classList.add('is-open');
-        item.dataset.openSide = side;
-        state.openSwipeId = d.id;
-      }
-    }
-    resetDrag();
-  }
-
-  function resetDrag() {
-    if (drag) {
-      clearTimeout(drag.longPressTimer);
-      if (drag.item) drag.item.classList.remove('is-dragging');
-    }
-    drag = null;
   }
 
   /* ==========================================================
@@ -907,7 +838,6 @@
     note.pinned = !note.pinned;
     note.updatedAt = Date.now();
     await NotesStore.upsert(note);
-    closeSwipe();
     renderAll();
     showToast(note.pinned ? 'Pinned' : 'Unpinned');
   }
@@ -918,22 +848,11 @@
     note.favorite = !note.favorite;
     note.updatedAt = Date.now();
     await NotesStore.upsert(note);
-    closeSwipe();
     renderAll();
     showToast(note.favorite ? 'Added to favorites' : 'Removed from favorites');
   }
 
-  async function setCategory(id, categoryId) {
-    const note = NotesStore.get(id);
-    if (!note || note.category === categoryId) return;
-    note.category = categoryId;
-    note.updatedAt = Date.now();
-    await NotesStore.upsert(note);
-    renderAll();
-  }
-
-  function deleteNote(id, options) {
-    const opts = options || {};
+  function deleteNote(id) {
     const note = NotesStore.get(id);
     if (!note) return;
     requestConfirm({
@@ -943,18 +862,13 @@
       destructive: true,
       onConfirm: async () => {
         const item = document.querySelector('.note-item[data-id="' + cssEscape(id) + '"]');
-        if (item && !opts.skipAnimation) {
+        if (item) {
           item.classList.add('is-removing');
           await new Promise((r) => setTimeout(r, 200));
         }
-        const snapshot = Object.assign({}, note);
         await NotesStore.remove(id);
-        if (state.openSwipeId === id) state.openSwipeId = null;
         renderAll();
-        showToast('Note deleted', 'Undo', async () => {
-          await NotesStore.upsert(snapshot);
-          renderAll();
-        });
+        showToast('Note deleted');
       }
     });
   }
@@ -963,25 +877,17 @@
      Toast
      ========================================================== */
 
-  function showToast(message, actionLabel, actionFn) {
+  function showToast(message) {
     clearTimeout(state.toastTimer);
     el.toastMsg.textContent = message;
-    if (actionLabel && typeof actionFn === 'function') {
-      el.toastAction.hidden = false;
-      el.toastAction.textContent = actionLabel;
-      state.toastActionFn = actionFn;
-    } else {
-      el.toastAction.hidden = true;
-      state.toastActionFn = null;
-    }
+    el.toastAction.hidden = true;
     el.toast.hidden = false;
-    state.toastTimer = setTimeout(hideToast, actionLabel ? 5000 : 2200);
+    state.toastTimer = setTimeout(hideToast, 2200);
   }
 
   function hideToast() {
     clearTimeout(state.toastTimer);
     el.toast.hidden = true;
-    state.toastActionFn = null;
   }
 
   /* ==========================================================
@@ -1186,16 +1092,11 @@
     note.content = el.editorContent.value;
     if (NotesStore.isBlank(note)) {
       if (!ed.isNew) {
-        const snapshot = Object.assign({}, note);
         await NotesStore.remove(note.id);
         ed.isNew = true;
         ed.dirty = false;
         renderAll();
-        showToast('Empty note removed', 'Undo', async () => {
-          await NotesStore.upsert(snapshot);
-          if (state.editor && state.editor.note.id === snapshot.id) state.editor.isNew = false;
-          renderAll();
-        });
+        showToast('Empty note removed');
       }
       return;
     }
@@ -1236,7 +1137,6 @@
     const ed = state.editor;
     if (!ed || ed.isNew) return;
     const id = ed.note.id;
-    const snapshot = Object.assign({}, ed.note);
     requestConfirm({
       title: 'Delete this note?',
       message: 'You can undo this right after.',
@@ -1248,10 +1148,7 @@
         el.editor.hidden = true;
         el.fab.classList.toggle('is-hidden', state.view === 'more' || state.view === 'categories');
         renderAll();
-        showToast('Note deleted', 'Undo', async () => {
-          await NotesStore.upsert(snapshot);
-          renderAll();
-        });
+        showToast('Note deleted');
       }
     });
   }
@@ -1293,10 +1190,12 @@
     if (kind === 'cat-detail') { closeCategoryDetail(); return true; }
     if (kind === 'cat-sheet') { closeCategoryActions(); return true; }
     if (kind === 'cat-editor') { closeCategoryEditor(); return true; }
+    if (kind === 'more-sub') { closeMoreSub(); return true; }
 
     if (state.catEditor) { closeCategoryEditor(); return true; }
     if (state.catSheetId) { closeCategoryActions(); return true; }
     if (!el.sortSheetBackdrop.hidden) { closeSortSheet(); return true; }
+    if (isMoreSubOpen()) { closeMoreSub(); return true; }
     if (state.catDetail) { closeCategoryDetail(); return true; }
     if (state.editor) { closeEditor(); return true; }
     if (!el.dialogBackdrop.hidden) { closeConfirm(); return true; }
@@ -1334,7 +1233,6 @@
     const stamp = new Date().toISOString().slice(0, 10);
     const filename = 'noter-backup-' + stamp + '.json';
 
-    // 1. Native (Capacitor) — write to cache and open the system share sheet.
     if (capFilesystem && capShare) {
       try {
         const written = await capFilesystem.writeFile({
@@ -1352,11 +1250,9 @@
       } catch (err) {
         const msg = String((err && err.message) || '').toLowerCase();
         if (msg.indexOf('cancel') !== -1 || msg.indexOf('abort') !== -1) return;
-        // Fall through to web path on unexpected errors.
       }
     }
 
-    // 2. Web Share API with files.
     try {
       const blob = new Blob([json], { type: 'application/json' });
       const file = new File([blob], filename, { type: 'application/json' });
@@ -1369,7 +1265,6 @@
         }
       }
 
-      // 3. Browser download fallback.
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -1419,6 +1314,7 @@
           syncThemeUI();
           renderAccentSwatches();
           renderDateStrip();
+          updateMoreValues();
           const parts = [];
           if (result.added) parts.push(result.added + ' added');
           if (result.updated) parts.push(result.updated + ' updated');
@@ -1441,6 +1337,7 @@
     for (const seg of segs) {
       seg.setAttribute('aria-checked', seg.dataset.themeOpt === current ? 'true' : 'false');
     }
+    updateMoreValues();
   }
 
   function renderAccentSwatches() {
@@ -1484,6 +1381,7 @@
     renderAllNotesViews();
     renderCategoriesView();
     renderStorageNote();
+    updateMoreValues();
   }
 
   function renderStorageNote() {
@@ -1570,26 +1468,60 @@
   }
 
   /* ==========================================================
-     Event wiring
+     Long-press on a note
      ========================================================== */
+
+  let notePressTimer = null;
+  let notePressTarget = null;
+
+  function notePointerDown(e) {
+    const face = e.target.closest && e.target.closest('.note-face');
+    if (!face) return;
+    const item = face.closest('.note-item');
+    if (!item) return;
+    notePressTarget = {
+      id: item.dataset.id,
+      startX: e.clientX,
+      startY: e.clientY,
+      moved: false
+    };
+    clearTimeout(notePressTimer);
+    notePressTimer = setTimeout(() => {
+      if (notePressTarget && !notePressTarget.moved) {
+        openSheet(notePressTarget.id);
+        notePressTarget.longFired = true;
+      }
+    }, 480);
+  }
+
+  function notePointerMove(e) {
+    if (!notePressTarget || notePressTarget.moved) return;
+    const dx = Math.abs(e.clientX - notePressTarget.startX);
+    const dy = Math.abs(e.clientY - notePressTarget.startY);
+    if (dx > 8 || dy > 8) {
+      notePressTarget.moved = true;
+      clearTimeout(notePressTimer);
+    }
+  }
+
+  function notePointerEnd() {
+    clearTimeout(notePressTimer);
+    const t = notePressTarget;
+    notePressTarget = null;
+    return t;
+  }
 
   function handleListClick(e) {
     const item = e.target.closest ? e.target.closest('.note-item') : null;
-    if (!item) { closeSwipe(); return; }
-    const id = item.dataset.id;
-    const swipeBtn = e.target.closest('.swipe-btn');
-    if (swipeBtn) {
-      const action = swipeBtn.dataset.swipe;
-      if (action === 'pin') togglePin(id);
-      else if (action === 'fav') toggleFavorite(id);
-      else if (action === 'delete') deleteNote(id);
+    if (!item) return;
+    if (notePressTarget && notePressTarget.longFired) return;
+    if (state.justLongPressed) {
+      state.justLongPressed = false;
       return;
     }
     const face = e.target.closest('.note-face');
     if (face) {
-      if (state.openSwipeId === id) { closeSwipe(); return; }
-      if (state.openSwipeId) { closeSwipe(); return; }
-      openEditor(id);
+      openEditor(item.dataset.id);
     }
   }
 
@@ -1601,6 +1533,15 @@
     const item = face.closest('.note-item');
     if (item) openEditor(item.dataset.id);
   }
+
+  function cssEscape(value) {
+    if (global.CSS && typeof CSS.escape === 'function') return CSS.escape(value);
+    return String(value).replace(/["\\]/g, '\\$&');
+  }
+
+  /* ==========================================================
+     Categories long-press
+     ========================================================== */
 
   let catPressTimer = null;
   let catPressTarget = null;
@@ -1705,6 +1646,10 @@
     closeConfirm();
   }
 
+  /* ==========================================================
+     Event wiring
+     ========================================================== */
+
   function wireEvents() {
     el.tabbar.addEventListener('click', (e) => {
       const tab = e.target.closest('.tab');
@@ -1720,11 +1665,10 @@
     for (const list of [el.homeList, el.searchList, el.catContent]) {
       list.addEventListener('click', handleListClick);
       list.addEventListener('keydown', handleListKeydown);
-      list.addEventListener('pointerdown', onPointerDown, { passive: true });
-      list.addEventListener('pointermove', onPointerMove, { passive: false });
-      list.addEventListener('pointerup', onPointerUp);
-      list.addEventListener('pointercancel', onPointerUp);
-      list.addEventListener('scroll', () => { if (drag) resetDrag(); }, { passive: true });
+      list.addEventListener('pointerdown', notePointerDown, { passive: true });
+      list.addEventListener('pointermove', notePointerMove, { passive: true });
+      list.addEventListener('pointerup', notePointerEnd);
+      list.addEventListener('pointercancel', notePointerEnd);
       list.addEventListener('contextmenu', (ev) => {
         if (ev.target.closest && ev.target.closest('.note-face')) {
           ev.preventDefault();
@@ -1750,12 +1694,6 @@
     el.catContent.addEventListener('pointerup', catPointerEnd);
     el.catContent.addEventListener('pointercancel', catPointerEnd);
     el.catContent.addEventListener('click', catContentClick);
-
-    document.addEventListener('pointerdown', (e) => {
-      if (!state.openSwipeId) return;
-      const item = e.target.closest ? e.target.closest('.note-item') : null;
-      if (!item || item.dataset.id !== state.openSwipeId) closeSwipe();
-    }, true);
 
     let searchRaf = 0;
     el.searchInput.addEventListener('input', () => {
@@ -1869,6 +1807,56 @@
       renderSearch();
     });
 
+    /* ---- More page navigation ---- */
+    const moreView = $('#view-more');
+    moreView.addEventListener('click', (e) => {
+      const nav = e.target.closest('[data-more-nav]');
+      if (nav) {
+        showMoreSub(nav.dataset.moreNav);
+        return;
+      }
+      const actionBtn = e.target.closest('[data-action]');
+      if (actionBtn) {
+        const action = actionBtn.dataset.action;
+        if (action === 'export') exportBackup();
+        else if (action === 'import') triggerImport();
+        return;
+      }
+    });
+
+    if (el.moreAppearanceBack) {
+      el.moreAppearanceBack.addEventListener('click', () => {
+        try {
+          if (overlayStack[overlayStack.length - 1] === 'more-sub') {
+            overlayStack.pop();
+            replaceHistory('view');
+          }
+        } catch (e) {}
+        closeMoreSub();
+      });
+    }
+    if (el.moreAccentBack) {
+      el.moreAccentBack.addEventListener('click', () => {
+        try {
+          if (overlayStack[overlayStack.length - 1] === 'more-sub') {
+            overlayStack.pop();
+            replaceHistory('view');
+          }
+        } catch (e) {}
+        closeMoreSub();
+      });
+    }
+
+    /* ---- About expand ---- */
+    if (el.aboutToggle) {
+      el.aboutToggle.addEventListener('click', () => {
+        const expanded = el.aboutToggle.getAttribute('aria-expanded') === 'true';
+        el.aboutToggle.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+        el.aboutBody.hidden = expanded;
+      });
+    }
+
+    /* ---- Note editor ---- */
     el.editorBack.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -1929,6 +1917,7 @@
       scheduleEditorSave();
     });
 
+    /* ---- Note action sheet ---- */
     el.sheetCancel.addEventListener('click', dismissNoteSheet);
     el.sheetBackdrop.addEventListener('click', (e) => {
       if (e.target === el.sheetBackdrop) dismissNoteSheet();
@@ -1954,18 +1943,14 @@
       else if (action === 'delete') deleteNote(id);
     });
 
+    /* ---- Confirm dialog ---- */
     el.dialogCancel.addEventListener('click', dismissConfirm);
     el.dialogConfirm.addEventListener('click', runDialogAction);
     el.dialogBackdrop.addEventListener('click', (e) => {
       if (e.target === el.dialogBackdrop) dismissConfirm();
     });
 
-    el.toastAction.addEventListener('click', async () => {
-      const fn = state.toastActionFn;
-      hideToast();
-      if (typeof fn === 'function') await fn();
-    });
-
+    /* ---- Theme + accent ---- */
     el.themeSegmented.addEventListener('click', (e) => {
       const seg = e.target.closest('.seg');
       if (!seg) return;
@@ -1979,15 +1964,7 @@
       if (!sw) return;
       Settings.setAccent(sw.dataset.accent);
       renderAccentSwatches();
-    });
-
-    const moreView = $('#view-more');
-    moreView.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-action]');
-      if (!btn) return;
-      const action = btn.dataset.action;
-      if (action === 'export') exportBackup();
-      else if (action === 'import') triggerImport();
+      updateMoreValues();
     });
 
     el.importFile.addEventListener('change', () => {
@@ -2002,7 +1979,8 @@
       if (!el.sortSheetBackdrop.hidden) { closeSortSheet(); return; }
       if (state.editor) { closeEditor(); return; }
       if (!el.dialogBackdrop.hidden) { closeConfirm(); return; }
-      if (!el.sheetBackdrop.hidden) { closeSheet(); }
+      if (!el.sheetBackdrop.hidden) { closeSheet(); return; }
+      if (isMoreSubOpen()) { closeMoreSub(); }
     });
 
     document.addEventListener('visibilitychange', () => {
@@ -2015,6 +1993,7 @@
 
     Settings.onThemeChange(() => {
       renderAccentSwatches();
+      updateMoreValues();
     });
 
     wireSheetDrag(el.sheetBackdrop);
@@ -2022,7 +2001,6 @@
     wireSheetDrag(el.catEditorBackdrop);
     wireSheetDrag(el.sortSheetBackdrop);
 
-    // Native Android back button — Capacitor App plugin.
     if (capApp && typeof capApp.addListener === 'function') {
       try {
         capApp.addListener('backButton', () => {
@@ -2042,6 +2020,7 @@
     renderAccentSwatches();
     updateGreeting();
     renderDateStrip();
+    updateMoreValues();
     setInterval(updateGreeting, 60000);
 
     try {
@@ -2081,9 +2060,7 @@
     });
 
     if ('serviceWorker' in navigator) {
-      global.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch(() => {});
-      });
+      navigator.serviceWorker.register('sw.js').catch(() => {});
     }
   }
 
