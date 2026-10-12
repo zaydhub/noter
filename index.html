@@ -62,6 +62,10 @@
     </symbol>
     <symbol id="i-list" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
     <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="m14.5 6.5 3 3"/></symbol>
+    <symbol id="i-restore" viewBox="0 0 24 24">
+      <path d="M4 12a8 8 0 1 0 2.5-5.8"/>
+      <path d="M4 5v4h4"/>
+    </symbol>
 
     <symbol id="c-thought" viewBox="0 0 24 24">
       <path d="M4.5 11.5a4 4 0 0 1 4-4h7a4 4 0 0 1 0 8h-2.5l-3.5 3v-3h-1a4 4 0 0 1-4-4z"/>
@@ -211,6 +215,13 @@
               <span class="row-ico"><svg class="ico ico-20" aria-hidden="true"><use href="#i-upload"/></svg></span>
               <span class="row-label">Import backup</span>
             </button>
+            <div class="row-sep"></div>
+            <button type="button" class="row-btn row-btn--nav" data-more-nav="trash">
+              <span class="row-ico"><svg class="ico ico-20" aria-hidden="true"><use href="#i-trash"/></svg></span>
+              <span class="row-label">Trash</span>
+              <span class="row-value" id="more-trash-count"></span>
+              <svg class="ico ico-18 row-chev" aria-hidden="true"><use href="#i-chevron"/></svg>
+            </button>
           </div>
         </div>
 
@@ -279,6 +290,22 @@
             <div class="accent-grid" id="accent-swatches" role="radiogroup" aria-label="Accent color"></div>
           </div>
         </div>
+      </div>
+
+      <!-- ============ TRASH SUB ============ -->
+      <div class="sub-view" id="more-trash" hidden>
+        <header class="view-header view-header--title">
+          <div class="header-row">
+            <button type="button" class="icon-btn header-back" id="more-trash-back" aria-label="Back">
+              <svg class="ico ico-22" aria-hidden="true"><use href="#i-back"/></svg>
+            </button>
+            <h1 class="page-title header-title">Trash</h1>
+            <div class="header-actions">
+              <button type="button" class="text-btn" id="more-trash-empty" aria-label="Empty trash">Empty</button>
+            </div>
+          </div>
+        </header>
+        <div id="trash-list" class="list-root"></div>
       </div>
 
       <!-- ============ ABOUT SUB ============ -->
@@ -369,6 +396,15 @@
       <div class="sheet-title" id="sheet-title"></div>
       <div class="sheet-actions" id="sheet-actions"></div>
       <button type="button" class="sheet-cancel" id="sheet-cancel">Cancel</button>
+    </div>
+  </div>
+
+  <div class="sheet-backdrop" id="trash-sheet-backdrop" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-label="Trashed note actions">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-title" id="trash-sheet-title"></div>
+      <div class="sheet-actions" id="trash-sheet-actions"></div>
+      <button type="button" class="sheet-cancel" id="trash-sheet-cancel">Cancel</button>
     </div>
   </div>
 
