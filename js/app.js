@@ -45,11 +45,16 @@
     moreAppearance:      $('#more-appearance'),
     moreAccent:          $('#more-accent'),
     moreAbout:           $('#more-about'),
+    moreTrash:           $('#more-trash'),
     moreAppearanceValue: $('#more-appearance-value'),
     moreAccentSwatch:    $('#more-accent-swatch'),
     moreAppearanceBack:  $('#more-appearance-back'),
     moreAccentBack:      $('#more-accent-back'),
     moreAboutBack:       $('#more-about-back'),
+    moreTrashBack:       $('#more-trash-back'),
+    moreTrashCount:      $('#more-trash-count'),
+    moreTrashEmpty:      $('#more-trash-empty'),
+    trashList:           $('#trash-list'),
 
     themeList:      $('#theme-list'),
     accentSwatches: $('#accent-swatches'),
@@ -69,6 +74,11 @@
     sheetTitle:     $('#sheet-title'),
     sheetActions:   $('#sheet-actions'),
     sheetCancel:    $('#sheet-cancel'),
+
+    trashSheetBackdrop: $('#trash-sheet-backdrop'),
+    trashSheetTitle:    $('#trash-sheet-title'),
+    trashSheetActions:  $('#trash-sheet-actions'),
+    trashSheetCancel:   $('#trash-sheet-cancel'),
 
     catSheetBackdrop: $('#cat-sheet-backdrop'),
     catSheetTitle:  $('#cat-sheet-title'),
@@ -116,6 +126,7 @@
     view: 'home',
     editor: null,
     sheetNoteId: null,
+    trashSheetNoteId: null,
     dialogAction: null,
     toastTimer: null,
     lastFocused: null,
@@ -131,7 +142,7 @@
 
     searchExpanded: false,
 
-    /* 'main' | 'appearance' | 'accent' | 'about' */
+    /* 'main' | 'appearance' | 'accent' | 'about' | 'trash' */
     moreSub: 'main'
   };
 
@@ -306,6 +317,35 @@
     );
   }
 
+  function trashRowHtml(note) {
+    const cat = Settings.getCategory(note.category);
+    const title = NotesStore.displayTitle(note);
+    const titleClass = title ? 'note-title' : 'note-title note-title--empty';
+    const titleText = title ? escapeHtml(title) : 'Empty note';
+    const days = NotesStore.daysLeft(note);
+    const daysText = days === 1 ? 'Deletes in 1 day' : ('Deletes in ' + days + ' days');
+    const aria = (title ? title : 'Empty note') + '. ' + daysText;
+
+    return (
+      '<li class="note-item trash-item" data-id="' + escapeHtml(note.id) + '">' +
+        '<div class="note-face" role="button" tabindex="0" aria-label="' + escapeHtml(aria) + '">' +
+          '<span class="note-icon" aria-hidden="true">' +
+            '<svg class="ico"><use href="#' + escapeHtml(cat.icon) + '"/></svg>' +
+          '</span>' +
+          '<span class="note-main">' +
+            '<span class="note-title-row">' +
+              '<span class="' + titleClass + '">' + titleText + '</span>' +
+            '</span>' +
+            '<span class="note-meta">' +
+              '<span class="note-meta-time">Deleted ' + escapeHtml(formatTime(note.deletedAt)) + '</span>' +
+              '<span class="note-meta-day">' + escapeHtml(daysText) + '</span>' +
+            '</span>' +
+          '</span>' +
+        '</div>' +
+      '</li>'
+    );
+  }
+
   function emptyStateHtml(iconId, title, sub) {
     return (
       '<div class="empty">' +
@@ -376,7 +416,7 @@
     const dayStart = state.homeDate != null ? state.homeDate : startOfDay(Date.now());
     const dayEnd = dayStart + DAY;
 
-    const todays = NotesStore.notes.filter((n) => {
+    const todays = NotesStore.live().filter((n) => {
       return n.updatedAt >= dayStart && n.updatedAt < dayEnd;
     });
 
@@ -409,7 +449,7 @@
     }
 
     if (hasQuery) {
-      const results = Search.run(query, NotesStore.notes);
+      const results = Search.run(query, NotesStore.live());
       if (!results.length) {
         el.searchList.innerHTML = emptyStateHtml(
           'i-search', 'No notes found', 'Try a different word or check the spelling.'
@@ -427,7 +467,7 @@
       return;
     }
 
-    const all = applySort(NotesStore.notes);
+    const all = applySort(NotesStore.live());
     if (!all.length) {
       el.searchList.innerHTML = emptyStateHtml(
         'i-search', 'No notes yet', 'Tap + to start writing something.'
@@ -754,6 +794,103 @@
   }
 
   /* ==========================================================
+     Trash view
+     ========================================================== */
+
+  function renderTrashView() {
+    const items = NotesStore.trashed();
+
+    if (!items.length) {
+      el.trashList.innerHTML = emptyStateHtml(
+        'i-trash', 'Trash is empty', 'Deleted notes appear here for 30 days before being removed.'
+      );
+      return;
+    }
+
+    let html = '<p class="trash-hint">Notes here are removed automatically after 30 days. Long-press a note to restore or delete it permanently.</p>';
+    html += '<ul class="note-list">';
+    for (const n of items) html += trashRowHtml(n);
+    html += '</ul>';
+    el.trashList.innerHTML = html;
+  }
+
+  function openTrashSheet(id) {
+    const note = NotesStore.get(id);
+    if (!note || !note.deletedAt) return;
+
+    state.trashSheetNoteId = id;
+    el.trashSheetTitle.textContent = NotesStore.displayTitle(note) || 'Empty note';
+
+    let html = '';
+    html += (
+      '<button type="button" class="sheet-btn" data-trash-action="restore">' +
+        '<svg class="ico ico-20" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-restore"/></svg>' +
+        '<span>Restore note</span>' +
+      '</button>'
+    );
+    html += (
+      '<button type="button" class="sheet-btn sheet-btn--danger" data-trash-action="purge">' +
+        '<svg class="ico ico-20" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-trash"/></svg>' +
+        '<span>Delete permanently</span>' +
+      '</button>'
+    );
+
+    el.trashSheetActions.innerHTML = html;
+    el.trashSheetBackdrop.hidden = false;
+    pushOverlayHistory('trash-sheet');
+  }
+
+  function closeTrashSheet() {
+    el.trashSheetBackdrop.hidden = true;
+    state.trashSheetNoteId = null;
+    resetSheetStyles(el.trashSheetBackdrop);
+  }
+
+  async function restoreTrashed(id) {
+    const note = NotesStore.get(id);
+    if (!note || !note.deletedAt) return;
+    await NotesStore.restore(id);
+    renderAll();
+    showToast('Note restored');
+  }
+
+  function purgeTrashed(id) {
+    const note = NotesStore.get(id);
+    if (!note) return;
+    requestConfirm({
+      title: 'Delete permanently?',
+      message: 'This cannot be undone.',
+      confirmLabel: 'Delete',
+      destructive: true,
+      onConfirm: async () => {
+        await NotesStore.purge(id);
+        renderTrashView();
+        renderAll();
+        showToast('Note deleted');
+      }
+    });
+  }
+
+  function emptyTrash() {
+    if (NotesStore.trashCount() === 0) {
+      showToast('Trash is already empty');
+      return;
+    }
+    requestConfirm({
+      title: 'Empty Trash?',
+      message: 'All notes in Trash will be permanently deleted. This cannot be undone.',
+      confirmLabel: 'Empty Trash',
+      destructive: true,
+      onConfirm: async () => {
+        await NotesStore.emptyTrash();
+        renderTrashView();
+        renderAll();
+        showToast('Trash emptied');
+      }
+    });
+  }
+
+  /* ==========================================================
      More page sub-navigation
      ========================================================== */
 
@@ -764,12 +901,14 @@
     el.moreAppearance.hidden = name !== 'appearance';
     el.moreAccent.hidden     = name !== 'accent';
     el.moreAbout.hidden      = name !== 'about';
+    el.moreTrash.hidden      = name !== 'trash';
 
     if (name !== 'main') pushOverlayHistory('more-sub');
 
     if (name === 'main') updateMoreValues();
     if (name === 'accent') renderAccentSwatches();
     if (name === 'appearance') syncThemeUI();
+    if (name === 'trash') renderTrashView();
   }
 
   function updateMoreValues() {
@@ -781,6 +920,13 @@
       const accent = Settings.PALETTE.find((p) => p.id === Settings.getAccent()) || Settings.PALETTE[0];
       const mode = resolved === 'dark' ? accent.dark : accent.light;
       el.moreAccentSwatch.style.background = mode.bg;
+    }
+    if (el.moreTrashCount) {
+      const n = NotesStore.trashCount();
+      el.moreTrashCount.textContent = n === 0 ? '' : String(n);
+    }
+    if (el.moreTrashEmpty) {
+      el.moreTrashEmpty.disabled = NotesStore.trashCount() === 0;
     }
   }
 
@@ -795,6 +941,7 @@
     el.moreAppearance.hidden = true;
     el.moreAccent.hidden = true;
     el.moreAbout.hidden = true;
+    el.moreTrash.hidden = true;
     updateMoreValues();
   }
 
@@ -854,10 +1001,10 @@
 
   function deleteNote(id) {
     const note = NotesStore.get(id);
-    if (!note) return;
+    if (!note || note.deletedAt) return;
     requestConfirm({
       title: 'Delete this note?',
-      message: 'You can undo this right after.',
+      message: 'It will stay in Trash for 30 days before being removed.',
       confirmLabel: 'Delete',
       destructive: true,
       onConfirm: async () => {
@@ -866,9 +1013,9 @@
           item.classList.add('is-removing');
           await new Promise((r) => setTimeout(r, 200));
         }
-        await NotesStore.remove(id);
+        await NotesStore.softDelete(id);
         renderAll();
-        showToast('Note deleted');
+        showToast('Moved to Trash');
       }
     });
   }
@@ -948,7 +1095,7 @@
 
   function openSheet(id) {
     const note = NotesStore.get(id);
-    if (!note) return;
+    if (!note || note.deletedAt) return;
     state.sheetNoteId = id;
     el.sheetTitle.textContent = NotesStore.displayTitle(note) || 'Empty note';
 
@@ -1049,7 +1196,7 @@
     let note, isNew = false;
     if (id) {
       const existing = NotesStore.get(id);
-      if (!existing) return;
+      if (!existing || existing.deletedAt) return;
       note = Object.assign({}, existing);
     } else {
       note = NotesStore.createDraft(defaultCategoryForNewNote());
@@ -1092,14 +1239,15 @@
     note.content = el.editorContent.value;
     if (NotesStore.isBlank(note)) {
       if (!ed.isNew) {
-        await NotesStore.remove(note.id);
+        await NotesStore.softDelete(note.id);
         ed.isNew = true;
         ed.dirty = false;
         renderAll();
-        showToast('Empty note removed');
+        showToast('Empty note moved to Trash');
       }
       return;
     }
+    note.deletedAt = null;
     note.updatedAt = Date.now();
     await NotesStore.upsert(note);
     ed.isNew = false;
@@ -1139,16 +1287,16 @@
     const id = ed.note.id;
     requestConfirm({
       title: 'Delete this note?',
-      message: 'You can undo this right after.',
+      message: 'It will stay in Trash for 30 days before being removed.',
       confirmLabel: 'Delete',
       destructive: true,
       onConfirm: async () => {
-        await NotesStore.remove(id);
+        await NotesStore.softDelete(id);
         state.editor = null;
         el.editor.hidden = true;
         el.fab.classList.toggle('is-hidden', state.view === 'more' || state.view === 'categories');
         renderAll();
-        showToast('Note deleted');
+        showToast('Moved to Trash');
       }
     });
   }
@@ -1185,6 +1333,7 @@
 
     if (kind === 'editor' && state.editor) { closeEditor(); return true; }
     if (kind === 'sheet') { closeSheet(); return true; }
+    if (kind === 'trash-sheet') { closeTrashSheet(); return true; }
     if (kind === 'dialog') { closeConfirm(); return true; }
     if (kind === 'sort-sheet') { closeSortSheet(); return true; }
     if (kind === 'cat-detail') { closeCategoryDetail(); return true; }
@@ -1194,6 +1343,7 @@
 
     if (state.catEditor) { closeCategoryEditor(); return true; }
     if (state.catSheetId) { closeCategoryActions(); return true; }
+    if (state.trashSheetNoteId) { closeTrashSheet(); return true; }
     if (!el.sortSheetBackdrop.hidden) { closeSortSheet(); return true; }
     if (isMoreSubOpen()) { closeMoreSub(); return true; }
     if (state.catDetail) { closeCategoryDetail(); return true; }
@@ -1315,6 +1465,7 @@
           renderAccentSwatches();
           renderDateStrip();
           updateMoreValues();
+          if (isMoreSubOpen() && state.moreSub === 'trash') renderTrashView();
           const parts = [];
           if (result.added) parts.push(result.added + ' added');
           if (result.updated) parts.push(result.updated + ' updated');
@@ -1375,6 +1526,7 @@
     renderHome();
     renderSearch();
     if (state.view === 'categories' || state.catDetail) renderCategoriesView();
+    if (isMoreSubOpen() && state.moreSub === 'trash') renderTrashView();
   }
 
   function renderAll() {
@@ -1385,7 +1537,7 @@
   }
 
   function renderStorageNote() {
-    const n = NotesStore.notes.length;
+    const n = NotesStore.live().length;
     el.storageNote.textContent =
       n + (n === 1 ? ' note stored on this device' : ' notes stored on this device');
   }
@@ -1468,7 +1620,7 @@
   }
 
   /* ==========================================================
-     Long-press on a note
+     Long-press on a note (live or trashed)
      ========================================================== */
 
   let notePressTimer = null;
@@ -1479,19 +1631,20 @@
     if (!face) return;
     const item = face.closest('.note-item');
     if (!item) return;
+    const isTrash = !!item.closest('#trash-list');
     notePressTarget = {
       id: item.dataset.id,
       startX: e.clientX,
       startY: e.clientY,
       moved: false,
-      longFired: false
+      isTrash: isTrash
     };
     clearTimeout(notePressTimer);
     notePressTimer = setTimeout(() => {
       if (notePressTarget && !notePressTarget.moved) {
-        notePressTarget.longFired = true;
         state.justLongPressed = true;
-        openSheet(notePressTarget.id);
+        if (notePressTarget.isTrash) openTrashSheet(notePressTarget.id);
+        else openSheet(notePressTarget.id);
       }
     }, 480);
   }
@@ -1518,6 +1671,11 @@
       state.justLongPressed = false;
       return;
     }
+    const inTrash = !!item.closest('#trash-list');
+    if (inTrash) {
+      openTrashSheet(item.dataset.id);
+      return;
+    }
     const face = e.target.closest('.note-face');
     if (face) {
       openEditor(item.dataset.id);
@@ -1530,7 +1688,9 @@
     if (!face) return;
     e.preventDefault();
     const item = face.closest('.note-item');
-    if (item) openEditor(item.dataset.id);
+    if (!item) return;
+    if (item.closest('#trash-list')) openTrashSheet(item.dataset.id);
+    else openEditor(item.dataset.id);
   }
 
   function cssEscape(value) {
@@ -1625,6 +1785,16 @@
     closeSheet();
   }
 
+  function dismissTrashSheet() {
+    try {
+      if (overlayStack[overlayStack.length - 1] === 'trash-sheet') {
+        overlayStack.pop();
+        replaceHistory('view');
+      }
+    } catch (e) {}
+    closeTrashSheet();
+  }
+
   function dismissSortSheet() {
     try {
       if (overlayStack[overlayStack.length - 1] === 'sort-sheet') {
@@ -1671,7 +1841,8 @@
 
     el.fab.addEventListener('click', () => openEditor(null));
 
-    for (const list of [el.homeList, el.searchList, el.catContent]) {
+    const noteLists = [el.homeList, el.searchList, el.catContent, el.trashList];
+    for (const list of noteLists) {
       list.addEventListener('click', handleListClick);
       list.addEventListener('keydown', handleListKeydown);
       list.addEventListener('pointerdown', notePointerDown, { passive: true });
@@ -1833,15 +2004,35 @@
       }
     });
 
-    if (el.moreAppearanceBack) {
-      el.moreAppearanceBack.addEventListener('click', dismissMoreSub);
-    }
-    if (el.moreAccentBack) {
-      el.moreAccentBack.addEventListener('click', dismissMoreSub);
-    }
-    if (el.moreAboutBack) {
-      el.moreAboutBack.addEventListener('click', dismissMoreSub);
-    }
+    if (el.moreAppearanceBack) el.moreAppearanceBack.addEventListener('click', dismissMoreSub);
+    if (el.moreAccentBack)     el.moreAccentBack.addEventListener('click', dismissMoreSub);
+    if (el.moreAboutBack)      el.moreAboutBack.addEventListener('click', dismissMoreSub);
+    if (el.moreTrashBack)      el.moreTrashBack.addEventListener('click', dismissMoreSub);
+    if (el.moreTrashEmpty)     el.moreTrashEmpty.addEventListener('click', emptyTrash);
+
+    /* ---- Trash sheet ---- */
+    el.trashSheetCancel.addEventListener('click', dismissTrashSheet);
+    el.trashSheetBackdrop.addEventListener('click', (e) => {
+      if (e.target === el.trashSheetBackdrop) dismissTrashSheet();
+    });
+    el.trashSheetActions.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-trash-action]');
+      if (!btn) return;
+      const action = btn.dataset.trashAction;
+      const id = state.trashSheetNoteId;
+      if (!id) return;
+
+      try {
+        if (overlayStack[overlayStack.length - 1] === 'trash-sheet') {
+          overlayStack.pop();
+          replaceHistory('view');
+        }
+      } catch (err) {}
+      closeTrashSheet();
+
+      if (action === 'restore') await restoreTrashed(id);
+      else if (action === 'purge') purgeTrashed(id);
+    });
 
     /* ---- Note editor ---- */
     el.editorBack.addEventListener('click', (e) => {
@@ -1966,6 +2157,7 @@
       if (e.key !== 'Escape') return;
       if (state.catEditor) { closeCategoryEditor(); return; }
       if (state.catSheetId) { closeCategoryActions(); return; }
+      if (state.trashSheetNoteId) { closeTrashSheet(); return; }
       if (!el.sortSheetBackdrop.hidden) { closeSortSheet(); return; }
       if (state.editor) { closeEditor(); return; }
       if (!el.dialogBackdrop.hidden) { closeConfirm(); return; }
@@ -1987,6 +2179,7 @@
     });
 
     wireSheetDrag(el.sheetBackdrop);
+    wireSheetDrag(el.trashSheetBackdrop);
     wireSheetDrag(el.catSheetBackdrop);
     wireSheetDrag(el.catEditorBackdrop);
     wireSheetDrag(el.sortSheetBackdrop);
@@ -2023,6 +2216,12 @@
       );
       return;
     }
+
+    // Auto-purge: permanently remove items whose 30-day window has passed.
+    try {
+      const purged = await NotesStore.purgeExpired();
+      if (purged > 0) console.log('[Noter] purged ' + purged + ' expired note(s)');
+    } catch (e) { /* ignore */ }
 
     renderAll();
     wireEvents();
