@@ -264,7 +264,7 @@ textarea { resize: none; }
   width: 62px;
   height: 62px;
   padding: 0;
-  border-radius: 16px;
+  border-radius: 21px;
   background: var(--surface);
   border: 1px solid rgba(0,0,0,.05);
   display: flex;
@@ -497,6 +497,22 @@ html[data-theme="dark"] .note-item { border: 1px solid var(--border); }
 
 .note-item.is-removing { animation: rowOut .22s var(--ease) forwards; }
 @keyframes rowOut { to { opacity: 0; transform: scale(.96); max-height: 0; margin-top: -8px; } }
+
+/* ---------- Trash rows ---------- */
+.trash-item .note-meta-day {
+  color: var(--danger);
+  font-weight: 500;
+}
+.trash-item .note-icon {
+  color: var(--text-3);
+}
+.trash-hint {
+  margin: 8px 6px 18px;
+  padding: 0 2px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--text-3);
+}
 
 .empty {
   display: flex;
@@ -1063,6 +1079,12 @@ html[data-theme="dark"] .cat-list-item { border: 1px solid var(--border); }
   transition: background .14s ease, transform .16s var(--ease);
 }
 .text-btn:active { background: var(--accent-soft); transform: scale(.95); }
+.text-btn--danger { color: var(--danger); }
+.text-btn--danger:active { background: var(--danger-soft); }
+.text-btn[disabled] {
+  opacity: .35;
+  pointer-events: none;
+}
 
 .editor-body {
   flex: 1 1 auto;
