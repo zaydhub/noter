@@ -44,17 +44,16 @@
     moreMain:            $('#more-main'),
     moreAppearance:      $('#more-appearance'),
     moreAccent:          $('#more-accent'),
+    moreAbout:           $('#more-about'),
     moreAppearanceValue: $('#more-appearance-value'),
     moreAccentSwatch:    $('#more-accent-swatch'),
     moreAppearanceBack:  $('#more-appearance-back'),
     moreAccentBack:      $('#more-accent-back'),
+    moreAboutBack:       $('#more-about-back'),
 
-    themeSegmented: $('#theme-segmented'),
+    themeList:      $('#theme-list'),
     accentSwatches: $('#accent-swatches'),
     storageNote:    $('#storage-note'),
-
-    aboutToggle:    $('#about-toggle'),
-    aboutBody:      $('#about-body'),
 
     editor:         $('#editor'),
     editorBack:     $('#editor-back'),
@@ -132,7 +131,7 @@
 
     searchExpanded: false,
 
-    /* More page sub-view: 'main' | 'appearance' | 'accent' */
+    /* 'main' | 'appearance' | 'accent' | 'about' */
     moreSub: 'main'
   };
 
@@ -764,13 +763,13 @@
     el.moreMain.hidden       = name !== 'main';
     el.moreAppearance.hidden = name !== 'appearance';
     el.moreAccent.hidden     = name !== 'accent';
+    el.moreAbout.hidden      = name !== 'about';
 
-    if (name === 'appearance' || name === 'accent') {
-      pushOverlayHistory('more-sub');
-    }
+    if (name !== 'main') pushOverlayHistory('more-sub');
 
     if (name === 'main') updateMoreValues();
     if (name === 'accent') renderAccentSwatches();
+    if (name === 'appearance') syncThemeUI();
   }
 
   function updateMoreValues() {
@@ -795,6 +794,7 @@
     el.moreMain.hidden = false;
     el.moreAppearance.hidden = true;
     el.moreAccent.hidden = true;
+    el.moreAbout.hidden = true;
     updateMoreValues();
   }
 
@@ -1333,9 +1333,9 @@
 
   function syncThemeUI() {
     const current = Settings.getTheme();
-    const segs = $$('.seg', el.themeSegmented);
-    for (const seg of segs) {
-      seg.setAttribute('aria-checked', seg.dataset.themeOpt === current ? 'true' : 'false');
+    const rows = $$('.theme-row', el.themeList);
+    for (const row of rows) {
+      row.setAttribute('aria-checked', row.dataset.themeOpt === current ? 'true' : 'false');
     }
     updateMoreValues();
   }
@@ -1483,13 +1483,15 @@
       id: item.dataset.id,
       startX: e.clientX,
       startY: e.clientY,
-      moved: false
+      moved: false,
+      longFired: false
     };
     clearTimeout(notePressTimer);
     notePressTimer = setTimeout(() => {
       if (notePressTarget && !notePressTarget.moved) {
-        openSheet(notePressTarget.id);
         notePressTarget.longFired = true;
+        state.justLongPressed = true;
+        openSheet(notePressTarget.id);
       }
     }, 480);
   }
@@ -1506,15 +1508,12 @@
 
   function notePointerEnd() {
     clearTimeout(notePressTimer);
-    const t = notePressTarget;
     notePressTarget = null;
-    return t;
   }
 
   function handleListClick(e) {
     const item = e.target.closest ? e.target.closest('.note-item') : null;
     if (!item) return;
-    if (notePressTarget && notePressTarget.longFired) return;
     if (state.justLongPressed) {
       state.justLongPressed = false;
       return;
@@ -1644,6 +1643,16 @@
       }
     } catch (e) {}
     closeConfirm();
+  }
+
+  function dismissMoreSub() {
+    try {
+      if (overlayStack[overlayStack.length - 1] === 'more-sub') {
+        overlayStack.pop();
+        replaceHistory('view');
+      }
+    } catch (e) {}
+    closeMoreSub();
   }
 
   /* ==========================================================
@@ -1825,35 +1834,13 @@
     });
 
     if (el.moreAppearanceBack) {
-      el.moreAppearanceBack.addEventListener('click', () => {
-        try {
-          if (overlayStack[overlayStack.length - 1] === 'more-sub') {
-            overlayStack.pop();
-            replaceHistory('view');
-          }
-        } catch (e) {}
-        closeMoreSub();
-      });
+      el.moreAppearanceBack.addEventListener('click', dismissMoreSub);
     }
     if (el.moreAccentBack) {
-      el.moreAccentBack.addEventListener('click', () => {
-        try {
-          if (overlayStack[overlayStack.length - 1] === 'more-sub') {
-            overlayStack.pop();
-            replaceHistory('view');
-          }
-        } catch (e) {}
-        closeMoreSub();
-      });
+      el.moreAccentBack.addEventListener('click', dismissMoreSub);
     }
-
-    /* ---- About expand ---- */
-    if (el.aboutToggle) {
-      el.aboutToggle.addEventListener('click', () => {
-        const expanded = el.aboutToggle.getAttribute('aria-expanded') === 'true';
-        el.aboutToggle.setAttribute('aria-expanded', expanded ? 'false' : 'true');
-        el.aboutBody.hidden = expanded;
-      });
+    if (el.moreAboutBack) {
+      el.moreAboutBack.addEventListener('click', dismissMoreSub);
     }
 
     /* ---- Note editor ---- */
@@ -1950,15 +1937,18 @@
       if (e.target === el.dialogBackdrop) dismissConfirm();
     });
 
-    /* ---- Theme + accent ---- */
-    el.themeSegmented.addEventListener('click', (e) => {
-      const seg = e.target.closest('.seg');
-      if (!seg) return;
-      Settings.setTheme(seg.dataset.themeOpt);
+    /* ---- Theme rows ---- */
+    el.themeList.addEventListener('click', (e) => {
+      const row = e.target.closest('.theme-row');
+      if (!row) return;
+      const opt = row.dataset.themeOpt;
+      if (!opt) return;
+      Settings.setTheme(opt);
       syncThemeUI();
       renderAccentSwatches();
     });
 
+    /* ---- Accent swatches ---- */
     el.accentSwatches.addEventListener('click', (e) => {
       const sw = e.target.closest('.swatch');
       if (!sw) return;
