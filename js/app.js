@@ -96,7 +96,8 @@
     sortSheetCancel:   $('#sort-sheet-cancel'),
 
     savePromptBackdrop: $('#save-prompt-backdrop'),
-    savePromptActions:  $('#save-prompt-actions'),
+    savePromptDiscard:  $('#save-prompt-discard'),
+    savePromptSave:     $('#save-prompt-save'),
     savePromptCancel:   $('#save-prompt-cancel'),
 
     dialogBackdrop: $('#dialog-backdrop'),
@@ -1123,7 +1124,7 @@
     if (!ed) return false;
     const title = el.editorTitle.value;
     const content = el.editorContent.value;
-    if (ed.isNew) {
+    if (ed.originallyNew) {
       return title.trim() !== '' || content.trim() !== '';
     }
     return title !== ed.original.title || content !== ed.original.content;
@@ -1135,7 +1136,6 @@
 
   function closeSavePrompt() {
     el.savePromptBackdrop.hidden = true;
-    resetSheetStyles(el.savePromptBackdrop);
   }
 
   function cancelSavePrompt() {
@@ -1159,20 +1159,23 @@
     const noteId = ed.note.id;
     const existing = NotesStore.get(noteId);
 
-    if (ed.isNew) {
+    // If this editing session began as a brand-new note, discard removes
+    // whatever autosave wrote. Any draft that was created is deleted outright.
+    if (ed.originallyNew) {
       if (existing) await NotesStore.remove(noteId);
-    } else {
+    } else if (existing) {
+      // Existing note: revert to the state it had when the editor opened.
       const orig = ed.original;
-      const reverted = Object.assign({}, existing || ed.note, {
-        title: orig.title,
-        content: orig.content,
-        category: orig.category,
-        pinned: orig.pinned,
-        favorite: orig.favorite,
-        updatedAt: orig.updatedAt
-      });
-      await NotesStore.upsert(reverted);
+      existing.title = orig.title;
+      existing.content = orig.content;
+      existing.category = orig.category;
+      existing.pinned = orig.pinned;
+      existing.favorite = orig.favorite;
+      existing.updatedAt = orig.updatedAt;
+      existing.deletedAt = null;
+      await NotesStore.upsert(existing);
     }
+
     ed.dirty = false;
     ed.isNew = false;
     renderAll();
@@ -1280,6 +1283,7 @@
     state.editor = {
       note,
       isNew,
+      originallyNew: isNew,
       mode: isNew ? 'edit' : 'view',
       timer: null,
       dirty: false,
@@ -1408,39 +1412,29 @@
      ========================================================== */
 
   function handleBack() {
-    // 1. Save prompt is topmost
     if (!el.savePromptBackdrop.hidden) {
       cancelSavePrompt();
       return true;
     }
 
-    // 2. Editor — check for unsaved changes
     if (state.editor) {
       requestEditorClose();
       return true;
     }
 
-    // 3. Any open sheet, in priority order
     if (state.trashSheetNoteId) { closeTrashSheet(); return true; }
     if (state.catSheetId)       { closeCategoryActions(); return true; }
     if (state.sheetNoteId)      { closeSheet(); return true; }
 
-    // 4. Category editor
     if (state.catEditor) { closeCategoryEditor(); return true; }
 
-    // 5. Sort sheet
     if (!el.sortSheetBackdrop.hidden) { closeSortSheet(); return true; }
-
-    // 6. Confirm dialog
     if (!el.dialogBackdrop.hidden) { closeConfirm(); return true; }
 
-    // 7. More sub-view
     if (isMoreSubOpen()) { closeMoreSub(); return true; }
 
-    // 8. Category detail
     if (state.catDetail) { closeCategoryDetail(); return true; }
 
-    // 9. Not on home → go home
     if (state.view !== 'home') {
       switchView('home');
       return true;
@@ -1450,7 +1444,6 @@
   }
 
   global.addEventListener('popstate', () => {
-    // Web-only fallback. On native, the App plugin handles back.
     if (isCapacitor) return;
     handleBack();
   });
@@ -2018,14 +2011,11 @@
     });
 
     /* ---- Save prompt ---- */
-    el.savePromptCancel.addEventListener('click', cancelSavePrompt);
+    if (el.savePromptCancel) el.savePromptCancel.addEventListener('click', cancelSavePrompt);
+    if (el.savePromptSave)    el.savePromptSave.addEventListener('click', () => onSavePromptAction('save'));
+    if (el.savePromptDiscard) el.savePromptDiscard.addEventListener('click', () => onSavePromptAction('discard'));
     el.savePromptBackdrop.addEventListener('click', (e) => {
       if (e.target === el.savePromptBackdrop) cancelSavePrompt();
-    });
-    el.savePromptActions.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-save-action]');
-      if (!btn) return;
-      onSavePromptAction(btn.dataset.saveAction);
     });
 
     /* ---- Note editor ---- */
@@ -2164,9 +2154,7 @@
     wireSheetDrag(el.catSheetBackdrop);
     wireSheetDrag(el.catEditorBackdrop);
     wireSheetDrag(el.sortSheetBackdrop);
-    wireSheetDrag(el.savePromptBackdrop);
 
-    /* ---- Native Android back button ---- */
     if (capApp && typeof capApp.addListener === 'function') {
       try {
         capApp.addListener('backButton', () => {
