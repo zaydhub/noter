@@ -40,6 +40,13 @@
     <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"/></symbol>
     <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.2 8.2 0 0 1 9.5 4 8.4 8.4 0 1 0 20 14.5z"/></symbol>
     <symbol id="i-auto" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-palette" viewBox="0 0 24 24">
+      <path d="M12 3.5a8.5 8.5 0 0 0 0 17c1.1 0 1.8-.8 1.8-1.6 0-.5-.3-.9-.6-1.2-.3-.3-.5-.7-.5-1.2 0-.9.7-1.6 1.6-1.6h2A4.2 4.2 0 0 0 20.5 11c0-4.1-3.8-7.5-8.5-7.5z"/>
+      <circle cx="8.2" cy="11" r="1.1" fill="currentColor" stroke="none"/>
+      <circle cx="10.5" cy="7.6" r="1.1" fill="currentColor" stroke="none"/>
+      <circle cx="14.5" cy="7.6" r="1.1" fill="currentColor" stroke="none"/>
+      <circle cx="16.6" cy="11" r="1.1" fill="currentColor" stroke="none"/>
+    </symbol>
     <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3.5v11M7.5 10.5 12 15l4.5-4.5M4.5 19.5h15"/></symbol>
     <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M4.5 19.5h15"/></symbol>
     <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3.8 21 20H3z"/><path d="M12 9.5v4.2"/><circle cx="12" cy="16.6" r=".9" fill="currentColor" stroke="none"/></symbol>
@@ -165,73 +172,118 @@
       <div id="cat-content" class="list-root"></div>
     </section>
 
-    <section class="view" id="view-more" data-view="more" aria-label="More">
-      <header class="view-header view-header--title">
-        <h1 class="page-title">More</h1>
-      </header>
+    <section class="view view--nested" id="view-more" data-view="more" aria-label="More">
 
-      <div class="section">
-        <h2 class="section-title">Appearance</h2>
-        <div class="card">
-          <div class="segmented" id="theme-segmented" role="radiogroup" aria-label="Theme">
-            <button type="button" class="seg" data-theme-opt="light" role="radio" aria-checked="false">
-              <svg class="ico ico-18" aria-hidden="true"><use href="#i-sun"/></svg><span>Light</span>
+      <!-- ============ MORE MAIN ============ -->
+      <div class="sub-view" id="more-main">
+        <header class="view-header view-header--title">
+          <h1 class="page-title">More</h1>
+        </header>
+
+        <div class="section">
+          <h2 class="section-title">Appearance</h2>
+          <div class="card">
+            <button type="button" class="row-btn row-btn--nav" data-more-nav="appearance">
+              <span class="row-ico"><svg class="ico ico-20" aria-hidden="true"><use href="#i-sun"/></svg></span>
+              <span class="row-label">Appearance</span>
+              <span class="row-value" id="more-appearance-value">System</span>
+              <svg class="ico ico-18 row-chev" aria-hidden="true"><use href="#i-chevron"/></svg>
             </button>
-            <button type="button" class="seg" data-theme-opt="dark" role="radio" aria-checked="false">
-              <svg class="ico ico-18" aria-hidden="true"><use href="#i-moon"/></svg><span>Dark</span>
-            </button>
-            <button type="button" class="seg" data-theme-opt="system" role="radio" aria-checked="true">
-              <svg class="ico ico-18" aria-hidden="true"><use href="#i-auto"/></svg><span>System</span>
+            <div class="row-sep"></div>
+            <button type="button" class="row-btn row-btn--nav" data-more-nav="accent">
+              <span class="row-ico"><svg class="ico ico-20" aria-hidden="true"><use href="#i-palette"/></svg></span>
+              <span class="row-label">Accent color</span>
+              <span class="row-value-swatch" id="more-accent-swatch" aria-hidden="true"></span>
+              <svg class="ico ico-18 row-chev" aria-hidden="true"><use href="#i-chevron"/></svg>
             </button>
           </div>
+        </div>
 
-          <div class="row-sep" style="margin-left:0"></div>
-
-          <div class="swatch-picker">
-            <p class="swatch-label">Accent color</p>
-            <div class="swatch-row" id="accent-swatches" role="radiogroup" aria-label="Accent color"></div>
+        <div class="section">
+          <h2 class="section-title">Data</h2>
+          <div class="card">
+            <button type="button" class="row-btn" data-action="export">
+              <span class="row-ico"><svg class="ico ico-20" aria-hidden="true"><use href="#i-download"/></svg></span>
+              <span class="row-label">Backup &amp; Export</span>
+            </button>
+            <div class="row-sep"></div>
+            <button type="button" class="row-btn" data-action="import">
+              <span class="row-ico"><svg class="ico ico-20" aria-hidden="true"><use href="#i-upload"/></svg></span>
+              <span class="row-label">Import backup</span>
+            </button>
           </div>
         </div>
-      </div>
 
-      <div class="section">
-        <h2 class="section-title">Data</h2>
-        <div class="card">
-          <button type="button" class="row-btn" data-action="export">
-            <span class="row-ico"><svg class="ico ico-20" aria-hidden="true"><use href="#i-download"/></svg></span>
-            <span class="row-label">Backup &amp; Export</span>
-            <svg class="ico ico-18 row-chev" aria-hidden="true"><use href="#i-chevron"/></svg>
-          </button>
-          <div class="row-sep"></div>
-          <button type="button" class="row-btn" data-action="import">
-            <span class="row-ico"><svg class="ico ico-20" aria-hidden="true"><use href="#i-upload"/></svg></span>
-            <span class="row-label">Import backup</span>
-            <svg class="ico ico-18 row-chev" aria-hidden="true"><use href="#i-chevron"/></svg>
-          </button>
-        </div>
-      </div>
-
-      <div class="section">
-        <h2 class="section-title">About</h2>
-        <div class="card">
-          <div class="about">
-            <div class="about-mark" aria-hidden="true">
+        <div class="section">
+          <h2 class="section-title">About</h2>
+          <div class="card">
+            <button type="button" class="about-toggle" id="about-toggle" aria-expanded="false">
               <img src="icon.png" alt="" class="about-mark-img">
-            </div>
-            <div class="about-text">
-              <p class="about-name">Noter</p>
-              <p class="about-meta">version 1.0</p>
+              <span class="about-toggle-text">
+                <span class="about-name">Noter</span>
+                <span class="about-meta">Version 1.0</span>
+              </span>
+              <svg class="ico ico-18 row-chev about-chevron" aria-hidden="true"><use href="#i-chevron"/></svg>
+            </button>
+            <div class="about-body" id="about-body" hidden>
+              <div class="row-sep" style="margin-left:0"></div>
+              <p class="about-note">
+                All notes are stored only on this device. Nothing is uploaded, tracked, or shared.
+                Export a backup regularly if your notes matter to you.
+              </p>
             </div>
           </div>
-          <div class="row-sep"></div>
-          <p class="about-note">
-            All notes are stored only on this device. Nothing is uploaded, tracked, or shared.
-            Export a backup regularly if your notes matter to you.
-          </p>
+        </div>
+
+        <p class="footer-note" id="storage-note"></p>
+      </div>
+
+      <!-- ============ APPEARANCE SUB ============ -->
+      <div class="sub-view" id="more-appearance" hidden>
+        <header class="view-header view-header--title">
+          <div class="header-row">
+            <button type="button" class="icon-btn header-back" id="more-appearance-back" aria-label="Back">
+              <svg class="ico ico-22" aria-hidden="true"><use href="#i-back"/></svg>
+            </button>
+            <h1 class="page-title header-title">Appearance</h1>
+          </div>
+        </header>
+        <div class="section" style="margin-top:6px">
+          <div class="card">
+            <div class="segmented" id="theme-segmented" role="radiogroup" aria-label="Theme">
+              <button type="button" class="seg" data-theme-opt="light" role="radio" aria-checked="false">
+                <svg class="ico ico-18" aria-hidden="true"><use href="#i-sun"/></svg><span>Light</span>
+              </button>
+              <button type="button" class="seg" data-theme-opt="dark" role="radio" aria-checked="false">
+                <svg class="ico ico-18" aria-hidden="true"><use href="#i-moon"/></svg><span>Dark</span>
+              </button>
+              <button type="button" class="seg" data-theme-opt="system" role="radio" aria-checked="true">
+                <svg class="ico ico-18" aria-hidden="true"><use href="#i-auto"/></svg><span>System</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
-      <p class="footer-note" id="storage-note"></p>
+      <!-- ============ ACCENT SUB ============ -->
+      <div class="sub-view" id="more-accent" hidden>
+        <header class="view-header view-header--title">
+          <div class="header-row">
+            <button type="button" class="icon-btn header-back" id="more-accent-back" aria-label="Back">
+              <svg class="ico ico-22" aria-hidden="true"><use href="#i-back"/></svg>
+            </button>
+            <h1 class="page-title header-title">Accent color</h1>
+          </div>
+        </header>
+        <div class="section" style="margin-top:6px">
+          <div class="card">
+            <div class="swatch-picker">
+              <div class="swatch-row" id="accent-swatches" role="radiogroup" aria-label="Accent color"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </section>
 
   </main>
