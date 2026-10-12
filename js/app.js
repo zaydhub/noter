@@ -1711,6 +1711,7 @@
     if (!face) return;
     const item = face.closest('.note-item');
     if (!item) return;
+    state.justLongPressed = false;
     const isTrash = !!item.closest('#trash-list');
     notePressTarget = {
       id: item.dataset.id,
