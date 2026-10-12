@@ -1006,6 +1006,7 @@
     if (!note || note.deletedAt) return;
     requestConfirm({
       title: 'Delete this note?',
+      message: ' ',
       confirmLabel: 'Delete',
       destructive: true,
       onConfirm: async () => {
