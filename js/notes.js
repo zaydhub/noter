@@ -4,7 +4,7 @@
 (function (global) {
   'use strict';
 
-  const listeners = new Set();
+  const TRASH_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
   function uuid() {
     if (global.crypto && typeof global.crypto.randomUUID === 'function') {
@@ -26,13 +26,16 @@
       createdAt: Number.isFinite(n.createdAt) ? n.createdAt : now,
       updatedAt: Number.isFinite(n.updatedAt) ? n.updatedAt : now,
       pinned: n.pinned === true,
-      favorite: n.favorite === true
+      favorite: n.favorite === true,
+      deletedAt: Number.isFinite(n.deletedAt) ? n.deletedAt : null
     };
   }
 
   const NotesStore = {
+    /* Every note, live + trashed. */
     notes: [],
     ready: false,
+    TRASH_TTL_MS,
 
     async init() {
       const raw = await DB.all();
@@ -41,20 +44,31 @@
       return this.notes;
     },
 
-    subscribe(fn) {
-      listeners.add(fn);
-      return () => listeners.delete(fn);
+    /* ---- Live vs trashed slices ---- */
+
+    live() {
+      return this.notes.filter((n) => !n.deletedAt);
     },
 
-    emit() {
-      listeners.forEach((fn) => {
-        try { fn(this.notes); } catch (e) { /* keep others alive */ }
-      });
+    trashed() {
+      const list = this.notes.filter((n) => n.deletedAt);
+      list.sort((a, b) => b.deletedAt - a.deletedAt);
+      return list;
     },
+
+    trashCount() {
+      let count = 0;
+      for (const n of this.notes) if (n.deletedAt) count++;
+      return count;
+    },
+
+    /* ---- Reads ---- */
 
     get(id) {
       return this.notes.find((n) => n.id === id) || null;
     },
+
+    /* ---- Writes ---- */
 
     async upsert(note) {
       const normalized = normalize(note);
@@ -75,10 +89,12 @@
         createdAt: now,
         updatedAt: now,
         pinned: false,
-        favorite: false
+        favorite: false,
+        deletedAt: null
       };
     },
 
+    /* Hard delete — used for empty drafts. */
     async remove(id) {
       const index = this.notes.findIndex((n) => n.id === id);
       if (index === -1) return null;
@@ -87,20 +103,60 @@
       return removed;
     },
 
-    async removeMany(ids) {
-      const set = new Set(ids);
-      const removed = this.notes.filter((n) => set.has(n.id));
-      this.notes = this.notes.filter((n) => !set.has(n.id));
-      for (const n of removed) await DB.remove(n.id);
-      return removed;
+    /* Soft delete — moves a note to Trash. */
+    async softDelete(id) {
+      const note = this.get(id);
+      if (!note) return null;
+      note.deletedAt = Date.now();
+      await DB.put(note);
+      return note;
     },
+
+    /* Restore a trashed note. */
+    async restore(id) {
+      const note = this.get(id);
+      if (!note || !note.deletedAt) return null;
+      note.deletedAt = null;
+      await DB.put(note);
+      return note;
+    },
+
+    /* Permanently remove a trashed note. */
+    async purge(id) {
+      const note = this.get(id);
+      if (!note) return null;
+      return this.remove(id);
+    },
+
+    /* Empty the whole trash. */
+    async emptyTrash() {
+      const ids = this.notes.filter((n) => n.deletedAt).map((n) => n.id);
+      if (!ids.length) return 0;
+      for (const id of ids) await DB.remove(id);
+      const set = new Set(ids);
+      this.notes = this.notes.filter((n) => !set.has(n.id));
+      return ids.length;
+    },
+
+    /* Auto-purge items older than 30 days. Called once on boot. */
+    async purgeExpired() {
+      const cutoff = Date.now() - TRASH_TTL_MS;
+      const expired = this.notes.filter((n) => n.deletedAt && n.deletedAt < cutoff);
+      if (!expired.length) return 0;
+      for (const n of expired) await DB.remove(n.id);
+      const set = new Set(expired.map((n) => n.id));
+      this.notes = this.notes.filter((n) => !set.has(n.id));
+      return expired.length;
+    },
+
+    /* ---- Filters / sorting (only live notes) ---- */
 
     isBlank(note) {
       return !note || (!note.title.trim() && !note.content.trim());
     },
 
     sorted(list) {
-      const source = list || this.notes;
+      const source = list || this.live();
       return source.slice().sort((a, b) => {
         if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
         return b.updatedAt - a.updatedAt;
@@ -108,25 +164,24 @@
     },
 
     favorites() {
-      return this.sorted(this.notes.filter((n) => n.favorite));
+      return this.sorted(this.live().filter((n) => n.favorite));
     },
 
     byCategory(categoryId) {
-      return this.sorted(this.notes.filter((n) => n.category === categoryId));
+      return this.sorted(this.live().filter((n) => n.category === categoryId));
     },
 
     countsByCategory() {
       const map = Object.create(null);
-      for (const n of this.notes) {
+      for (const n of this.live()) {
         map[n.category] = (map[n.category] || 0) + 1;
       }
       return map;
     },
 
-    /** Moves every note in one category to another. Returns count moved. */
     async reassignCategory(fromId, toId) {
       if (!fromId || !toId || fromId === toId) return 0;
-      const affected = this.notes.filter((n) => n.category === fromId);
+      const affected = this.live().filter((n) => n.category === fromId);
       if (!affected.length) return 0;
       const now = Date.now();
       for (const n of affected) {
@@ -145,6 +200,15 @@
         .map((l) => l.trim())
         .find((l) => l.length > 0);
       return firstLine || '';
+    },
+
+    /* Days remaining before auto-purge. Returns 0..30. */
+    daysLeft(note) {
+      if (!note || !note.deletedAt) return 0;
+      const elapsed = Date.now() - note.deletedAt;
+      const remaining = TRASH_TTL_MS - elapsed;
+      if (remaining <= 0) return 0;
+      return Math.max(1, Math.ceil(remaining / (24 * 60 * 60 * 1000)));
     },
 
     async merge(incoming) {
