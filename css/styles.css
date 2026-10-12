@@ -1296,7 +1296,11 @@ html[data-theme="dark"] .cat-list-item { border: 1px solid var(--border); }
 }
 .dialog-btn:active { filter: brightness(.93); }
 .dialog-btn--danger { background: var(--danger); color: #fff; }
-
+.dialog-btn--primary { background: var(--accent); color: var(--accent-ink); }
+.dialog--save-prompt { max-width: 340px; }
+.dialog--save-prompt .dialog-title { margin-bottom: 18px; }
+.dialog--save-prompt .dialog-actions { gap: 6px; }
+.dialog--save-prompt .dialog-btn { font-size: 16px; padding: 0 4px; }
 .toast {
   position: fixed;
   left: 50%;
