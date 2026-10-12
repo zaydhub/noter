@@ -1006,7 +1006,6 @@
     if (!note || note.deletedAt) return;
     requestConfirm({
       title: 'Delete this note?',
-      message: 'It will stay in Trash for 30 days before being removed.',
       confirmLabel: 'Delete',
       destructive: true,
       onConfirm: async () => {
