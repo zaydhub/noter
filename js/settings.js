@@ -13,16 +13,19 @@
   const SORTS = ['newest', 'oldest', 'az', 'za'];
 
   const PALETTE = [
-    { id: 'orange', name: 'Orange', light: { bg: '#ff9500', ink: '#ffffff' }, dark: { bg: '#ffb340', ink: '#1c1c1e' } },
-    { id: 'blue',   name: 'Blue',   light: { bg: '#007aff', ink: '#ffffff' }, dark: { bg: '#0a84ff', ink: '#ffffff' } },
-    { id: 'indigo', name: 'Indigo', light: { bg: '#5856d6', ink: '#ffffff' }, dark: { bg: '#5e5ce6', ink: '#ffffff' } },
-    { id: 'purple', name: 'Purple', light: { bg: '#af52de', ink: '#ffffff' }, dark: { bg: '#bf5af2', ink: '#1c1c1e' } },
-    { id: 'pink',   name: 'Pink',   light: { bg: '#ff2d55', ink: '#ffffff' }, dark: { bg: '#ff6482', ink: '#1c1c1e' } },
-    { id: 'red',    name: 'Red',    light: { bg: '#ff3b30', ink: '#ffffff' }, dark: { bg: '#ff453a', ink: '#ffffff' } },
-    { id: 'yellow', name: 'Yellow', light: { bg: '#ffcc00', ink: '#1c1c1e' }, dark: { bg: '#ffd60a', ink: '#1c1c1e' } },
-    { id: 'green',  name: 'Green',  light: { bg: '#34c759', ink: '#ffffff' }, dark: { bg: '#30d158', ink: '#1c1c1e' } },
-    { id: 'teal',   name: 'Teal',   light: { bg: '#30b0c7', ink: '#ffffff' }, dark: { bg: '#40cbe0', ink: '#1c1c1e' } }
-  ];
+  { id: 'red',    name: 'Red',    light: { bg: '#ff383c', ink: '#ffffff' }, dark: { bg: '#ff4245', ink: '#ffffff' } },
+  { id: 'orange', name: 'Orange', light: { bg: '#ff8d28', ink: '#ffffff' }, dark: { bg: '#ff9230', ink: '#ffffff' } },
+  { id: 'yellow', name: 'Yellow', light: { bg: '#ffcc00', ink: '#1c1c1e' }, dark: { bg: '#ffd600', ink: '#1c1c1e' } },
+  { id: 'green',  name: 'Green',  light: { bg: '#34c759', ink: '#ffffff' }, dark: { bg: '#30d158', ink: '#1c1c1e' } },
+  { id: 'mint',   name: 'Mint',   light: { bg: '#00c8b3', ink: '#1c1c1e' }, dark: { bg: '#00dac3', ink: '#1c1c1e' } },
+  { id: 'teal',   name: 'Teal',   light: { bg: '#00c3d0', ink: '#1c1c1e' }, dark: { bg: '#00d2e0', ink: '#1c1c1e' } },
+  { id: 'cyan',   name: 'Cyan',   light: { bg: '#00c0e8', ink: '#1c1c1e' }, dark: { bg: '#3cd3fe', ink: '#1c1c1e' } },
+  { id: 'blue',   name: 'Blue',   light: { bg: '#0088ff', ink: '#ffffff' }, dark: { bg: '#0091ff', ink: '#ffffff' } },
+  { id: 'indigo', name: 'Indigo', light: { bg: '#6155f5', ink: '#ffffff' }, dark: { bg: '#6d7cff', ink: '#ffffff' } },
+  { id: 'purple', name: 'Purple', light: { bg: '#cb30e0', ink: '#ffffff' }, dark: { bg: '#db34f2', ink: '#ffffff' } },
+  { id: 'pink',   name: 'Pink',   light: { bg: '#ff2d55', ink: '#ffffff' }, dark: { bg: '#ff375f', ink: '#ffffff' } },
+  { id: 'brown',  name: 'Brown',  light: { bg: '#ac7f5e', ink: '#ffffff' }, dark: { bg: '#b78a66', ink: '#ffffff' } }
+];
 
   const DEFAULT_ACCENT = 'orange';
 
