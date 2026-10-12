@@ -217,21 +217,14 @@
         <div class="section">
           <h2 class="section-title">About</h2>
           <div class="card">
-            <button type="button" class="about-toggle" id="about-toggle" aria-expanded="false">
-              <img src="icon.png" alt="" class="about-mark-img">
-              <span class="about-toggle-text">
+            <button type="button" class="about-row" data-more-nav="about">
+              <img src="icon.png" alt="" class="row-icon-img">
+              <span class="about-row-text">
                 <span class="about-name">Noter</span>
                 <span class="about-meta">Version 1.0</span>
               </span>
-              <svg class="ico ico-18 row-chev about-chevron" aria-hidden="true"><use href="#i-chevron"/></svg>
+              <svg class="ico ico-18 row-chev" aria-hidden="true"><use href="#i-chevron"/></svg>
             </button>
-            <div class="about-body" id="about-body" hidden>
-              <div class="row-sep" style="margin-left:0"></div>
-              <p class="about-note">
-                All notes are stored only on this device. Nothing is uploaded, tracked, or shared.
-                Export a backup regularly if your notes matter to you.
-              </p>
-            </div>
           </div>
         </div>
 
@@ -249,18 +242,24 @@
           </div>
         </header>
         <div class="section" style="margin-top:6px">
-          <div class="card">
-            <div class="segmented" id="theme-segmented" role="radiogroup" aria-label="Theme">
-              <button type="button" class="seg" data-theme-opt="light" role="radio" aria-checked="false">
-                <svg class="ico ico-18" aria-hidden="true"><use href="#i-sun"/></svg><span>Light</span>
-              </button>
-              <button type="button" class="seg" data-theme-opt="dark" role="radio" aria-checked="false">
-                <svg class="ico ico-18" aria-hidden="true"><use href="#i-moon"/></svg><span>Dark</span>
-              </button>
-              <button type="button" class="seg" data-theme-opt="system" role="radio" aria-checked="true">
-                <svg class="ico ico-18" aria-hidden="true"><use href="#i-auto"/></svg><span>System</span>
-              </button>
-            </div>
+          <div class="card" id="theme-list" role="radiogroup" aria-label="Theme">
+            <button type="button" class="theme-row" data-theme-opt="light" role="radio" aria-checked="false">
+              <svg class="ico ico-20 theme-row-ico" aria-hidden="true"><use href="#i-sun"/></svg>
+              <span class="theme-row-label">Light</span>
+              <svg class="ico ico-18 theme-row-check" aria-hidden="true"><use href="#i-check"/></svg>
+            </button>
+            <div class="row-sep"></div>
+            <button type="button" class="theme-row" data-theme-opt="dark" role="radio" aria-checked="false">
+              <svg class="ico ico-20 theme-row-ico" aria-hidden="true"><use href="#i-moon"/></svg>
+              <span class="theme-row-label">Dark</span>
+              <svg class="ico ico-18 theme-row-check" aria-hidden="true"><use href="#i-check"/></svg>
+            </button>
+            <div class="row-sep"></div>
+            <button type="button" class="theme-row" data-theme-opt="system" role="radio" aria-checked="true">
+              <svg class="ico ico-20 theme-row-ico" aria-hidden="true"><use href="#i-auto"/></svg>
+              <span class="theme-row-label">System</span>
+              <svg class="ico ico-18 theme-row-check" aria-hidden="true"><use href="#i-check"/></svg>
+            </button>
           </div>
         </div>
       </div>
@@ -277,9 +276,35 @@
         </header>
         <div class="section" style="margin-top:6px">
           <div class="card">
-            <div class="swatch-picker">
-              <div class="swatch-row" id="accent-swatches" role="radiogroup" aria-label="Accent color"></div>
+            <div class="accent-grid" id="accent-swatches" role="radiogroup" aria-label="Accent color"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ ABOUT SUB ============ -->
+      <div class="sub-view" id="more-about" hidden>
+        <header class="view-header view-header--title">
+          <div class="header-row">
+            <button type="button" class="icon-btn header-back" id="more-about-back" aria-label="Back">
+              <svg class="ico ico-22" aria-hidden="true"><use href="#i-back"/></svg>
+            </button>
+            <h1 class="page-title header-title">About</h1>
+          </div>
+        </header>
+        <div class="section" style="margin-top:6px">
+          <div class="card">
+            <div class="about-header">
+              <img src="icon.png" alt="" class="row-icon-img">
+              <div class="about-row-text">
+                <p class="about-name">Noter</p>
+                <p class="about-meta">Version 1.0 · Offline-first</p>
+              </div>
             </div>
+            <div class="row-sep" style="margin-left:0"></div>
+            <p class="about-note">
+              All notes are stored only on this device. Nothing is uploaded, tracked, or shared.
+              Export a backup regularly if your notes matter to you.
+            </p>
           </div>
         </div>
       </div>
