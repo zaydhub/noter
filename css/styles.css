@@ -164,6 +164,21 @@ textarea { resize: none; }
 }
 .view.is-active { display: flex; }
 
+/* More view holds multiple sub-views that swap in place */
+.view--nested { overflow: hidden; }
+.sub-view {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  background: var(--bg);
+}
+.sub-view[hidden] { display: none !important; }
+
 .view-header {
   position: sticky;
   top: 0;
@@ -250,7 +265,7 @@ textarea { resize: none; }
   width: 62px;
   height: 62px;
   padding: 0;
-  border-radius: 22px;
+  border-radius: 16px;
   background: var(--surface);
   border: 1px solid rgba(0,0,0,.05);
   display: flex;
@@ -402,34 +417,6 @@ html[data-theme="dark"] .date-chip {
 }
 html[data-theme="dark"] .note-item { border: 1px solid var(--border); }
 
-.note-swipe {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: stretch;
-  justify-content: space-between;
-  pointer-events: none;
-}
-.swipe-side { display: flex; align-items: stretch; }
-.swipe-btn {
-  pointer-events: auto;
-  width: 76px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: .01em;
-  color: #fff;
-  border-radius: var(--r-md);
-}
-.swipe-btn:active { filter: brightness(.92); }
-.swipe-btn--pin    { background: var(--accent); color: var(--accent-ink); }
-.swipe-btn--fav    { background: var(--fav);    color: #1c1c1e; }
-.swipe-btn--delete { background: var(--danger); }
-
 .note-face {
   position: relative;
   z-index: 1;
@@ -441,13 +428,11 @@ html[data-theme="dark"] .note-item { border: 1px solid var(--border); }
   background: var(--surface);
   border-radius: var(--r-md);
   text-align: left;
-  will-change: transform;
-  transition: transform var(--dur) var(--ease);
+  transition: background .14s ease;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
-.note-item.is-dragging .note-face { transition: none; }
 .note-face:active { background: var(--surface-press); }
 
 .note-icon {
@@ -619,6 +604,20 @@ html[data-theme="dark"] .card { border: 1px solid var(--border); }
 }
 .row-label { flex: 1 1 auto; min-width: 0; }
 .row-chev { color: var(--text-3); flex: none; }
+.row-value {
+  flex: none;
+  font-size: 16px;
+  color: var(--text-2);
+  letter-spacing: -0.012em;
+}
+.row-value-swatch {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.06);
+}
 
 .segmented {
   display: grid;
@@ -909,21 +908,48 @@ html[data-theme="dark"] .cat-list-item { border: 1px solid var(--border); }
   pointer-events: none;
 }
 
-.about { display: flex; align-items: center; gap: 13px; padding: 16px; }
-.about-mark {
-  flex: none;
-  width: 46px; height: 46px;
-  border-radius: 13px;
-  overflow: hidden;
-}
-.about-mark-img {
+/* ---------- About (expandable) ---------- */
+.about-toggle {
+  display: flex;
+  align-items: center;
+  gap: 13px;
   width: 100%;
-  height: 100%;
-  display: block;
+  padding: 14px 16px;
+  text-align: left;
+  transition: background .14s ease;
 }
-.about-name { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.02em; }
+.about-toggle:active { background: var(--surface-press); }
+.about-mark-img {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  border-radius: 13px;
+  display: block;
+  object-fit: cover;
+}
+.about-toggle-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.about-name { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.02em; color: var(--text); }
 .about-meta { margin: 3px 0 0; font-size: 15px; color: var(--text-2); }
-.about-note { margin: 0; padding: 14px 16px 16px; font-size: 15px; line-height: 1.5; color: var(--text-2); }
+.about-chevron {
+  transition: transform .22s var(--ease);
+}
+.about-toggle[aria-expanded="true"] .about-chevron {
+  transform: rotate(90deg);
+}
+.about-body { overflow: hidden; }
+.about-note {
+  margin: 0;
+  padding: 14px 16px 16px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
 .footer-note {
   margin: 26px 0 0;
   padding: 0 24px calc(var(--tabbar-h) + var(--safe-bottom) + 40px);
