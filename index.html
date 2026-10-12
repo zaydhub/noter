@@ -178,7 +178,6 @@
 
     <section class="view view--nested" id="view-more" data-view="more" aria-label="More">
 
-      <!-- ============ MORE MAIN ============ -->
       <div class="sub-view" id="more-main">
         <header class="view-header view-header--title">
           <h1 class="page-title">More</h1>
@@ -242,7 +241,6 @@
         <p class="footer-note" id="storage-note"></p>
       </div>
 
-      <!-- ============ APPEARANCE SUB ============ -->
       <div class="sub-view" id="more-appearance" hidden>
         <header class="view-header view-header--title">
           <div class="header-row">
@@ -275,7 +273,6 @@
         </div>
       </div>
 
-      <!-- ============ ACCENT SUB ============ -->
       <div class="sub-view" id="more-accent" hidden>
         <header class="view-header view-header--title">
           <div class="header-row">
@@ -292,7 +289,6 @@
         </div>
       </div>
 
-      <!-- ============ TRASH SUB ============ -->
       <div class="sub-view" id="more-trash" hidden>
         <header class="view-header view-header--title">
           <div class="header-row">
@@ -308,7 +304,6 @@
         <div id="trash-list" class="list-root"></div>
       </div>
 
-      <!-- ============ ABOUT SUB ============ -->
       <div class="sub-view" id="more-about" hidden>
         <header class="view-header view-header--title">
           <div class="header-row">
@@ -439,6 +434,25 @@
       <div class="sheet-title">Sort by</div>
       <div class="sheet-actions" id="sort-sheet-actions"></div>
       <button type="button" class="sheet-cancel" id="sort-sheet-cancel">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Save prompt — appears when closing the editor with unsaved changes. -->
+  <div class="sheet-backdrop" id="save-prompt-backdrop" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-label="Unsaved changes">
+      <div class="sheet-handle" aria-hidden="true"></div>
+      <div class="sheet-title">Save changes?</div>
+      <div class="sheet-actions" id="save-prompt-actions">
+        <button type="button" class="sheet-btn" data-save-action="save">
+          <svg class="ico ico-20" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-check"/></svg>
+          <span>Save note</span>
+        </button>
+        <button type="button" class="sheet-btn sheet-btn--danger" data-save-action="discard">
+          <svg class="ico ico-20" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-trash"/></svg>
+          <span>Discard changes</span>
+        </button>
+      </div>
+      <button type="button" class="sheet-cancel" id="save-prompt-cancel">Cancel</button>
     </div>
   </div>
 
