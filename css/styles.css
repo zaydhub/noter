@@ -1297,8 +1297,18 @@ html:not([data-theme="dark"]) .chip[aria-checked="true"] {
   transition: filter .14s ease;
 }
 .dialog-btn:active { filter: brightness(.93); }
-.dialog-btn--danger { background: var(--danger); color: #fff; }
+.dialog-btn--danger { background: #000000; color: #ffffff; }
 .dialog-btn--primary { background: var(--accent); color: var(--accent-ink); }
+html[data-theme="dark"] .dialog {
+  background: #2c2c2e;
+}
+html[data-theme="dark"] .dialog-btn {
+  background: #3a3a3c;
+}
+html[data-theme="dark"] .dialog-btn--primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
 .dialog--save-prompt { max-width: 340px; }
 .dialog--save-prompt .dialog-title { margin-bottom: 18px; }
 .dialog--save-prompt .dialog-actions { gap: 6px; }
