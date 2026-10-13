@@ -1286,6 +1286,7 @@ html:not([data-theme="dark"]) .chip[aria-checked="true"] {
 .dialog-title { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.02em; }
 .dialog-msg { margin: 6px 0 18px; font-size: 14px; line-height: 1.45; color: var(--text-2); }
 .dialog-actions { display: flex; gap: 8px; }
+.dialog-title + .dialog-actions { margin-top: 18px; }
 .dialog-btn {
   flex: 1;
   height: 46px;
