@@ -449,7 +449,7 @@
     renderGrouped(
       el.homeList,
       sorted,
-      emptyStateHtml('i-home', 'No notes for this day', 'Tap + to start writing something.')
+      emptyStateHtml('i-home', 'No notes for this day', 'Tap + to add new notes.')
     );
   }
 
@@ -494,7 +494,7 @@
     const all = applySort(NotesStore.live());
     if (!all.length) {
       el.searchList.innerHTML = emptyStateHtml(
-        'i-search', 'No notes yet', 'Tap + to start writing something.'
+        'i-search', 'No notes yet', 'Tap + add new notes.'
       );
       return;
     }
@@ -897,7 +897,7 @@
     }
     requestConfirm({
       title: 'Empty Trash?',
-      message: 'All notes in Trash will be permanently deleted. This cannot be undone.',
+      message: 'All notes in trash will be permanently deleted.',
       confirmLabel: 'Empty Trash',
       destructive: true,
       onConfirm: async () => {
@@ -1021,7 +1021,7 @@
     if (!note || note.deletedAt) return;
     requestConfirm({
       title: 'Delete this note?',
-      message: 'It will stay in Trash for 30 days before being removed.',
+      message: ' ',
       confirmLabel: 'Delete',
       destructive: true,
       onConfirm: async () => {
@@ -1405,7 +1405,7 @@
     const id = ed.note.id;
     requestConfirm({
       title: 'Delete this note?',
-      message: 'It will stay in Trash for 30 days before being removed.',
+      message: ' ',
       confirmLabel: 'Delete',
       destructive: true,
       onConfirm: async () => {
