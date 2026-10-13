@@ -13,6 +13,7 @@
   const capApp = capPlugins.App || null;
   const capFilesystem = capPlugins.Filesystem || null;
   const capShare = capPlugins.Share || null;
+  const capStatusBar = capPlugins.StatusBar || null;
 
   const el = {
     metaTheme:      $('#meta-theme-color'),
@@ -225,6 +226,20 @@
     el.greetingTitle.textContent = greeting + ', Zayd';
     el.greetingSub.textContent = 'What’s on your mind?';
     if (el.homeDate) el.homeDate.textContent = longDate(Date.now());
+  }
+
+  function syncStatusBar() {
+    if (!capStatusBar) return;
+    const resolved = Settings.resolvedTheme();
+    try {
+      if (resolved === 'dark') {
+        capStatusBar.setStyle({ style: 'DARK' });
+        capStatusBar.setBackgroundColor({ color: '#000000' });
+      } else {
+        capStatusBar.setStyle({ style: 'LIGHT' });
+        capStatusBar.setBackgroundColor({ color: '#f5f5f7' });
+      }
+    } catch (e) { /* ignore */ }
   }
 
   function cssEscape(value) {
@@ -1006,7 +1021,7 @@
     if (!note || note.deletedAt) return;
     requestConfirm({
       title: 'Delete this note?',
-      message: ' ',
+      message: 'It will stay in Trash for 30 days before being removed.',
       confirmLabel: 'Delete',
       destructive: true,
       onConfirm: async () => {
@@ -1159,12 +1174,9 @@
     const noteId = ed.note.id;
     const existing = NotesStore.get(noteId);
 
-    // If this editing session began as a brand-new note, discard removes
-    // whatever autosave wrote. Any draft that was created is deleted outright.
     if (ed.originallyNew) {
       if (existing) await NotesStore.remove(noteId);
     } else if (existing) {
-      // Existing note: revert to the state it had when the editor opened.
       const orig = ed.original;
       existing.title = orig.title;
       existing.content = orig.content;
@@ -2148,6 +2160,7 @@
     Settings.onThemeChange(() => {
       renderAccentSwatches();
       updateMoreValues();
+      syncStatusBar();
     });
 
     wireSheetDrag(el.sheetBackdrop);
@@ -2176,6 +2189,7 @@
 
   async function boot() {
     Settings.applyTheme();
+    syncStatusBar();
     syncThemeUI();
     renderAccentSwatches();
     updateGreeting();
