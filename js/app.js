@@ -449,7 +449,7 @@
     renderGrouped(
       el.homeList,
       sorted,
-      emptyStateHtml('i-home', 'No notes for this day', 'Tap + to add')
+      emptyStateHtml('i-home', 'No notes for this day', 'Tap + to create')
     );
   }
 
@@ -494,7 +494,7 @@
     const all = applySort(NotesStore.live());
     if (!all.length) {
       el.searchList.innerHTML = emptyStateHtml(
-        'i-search', 'No notes yet', 'Tap + add'
+        'i-search', 'No notes yet', 'Tap + to create'
       );
       return;
     }
@@ -822,7 +822,7 @@
 
     if (!items.length) {
       el.trashList.innerHTML = emptyStateHtml(
-        'i-trash', 'Trash is empty', 'Deleted notes appear here for 30 days before being removed.'
+        'i-trash', 'Trash is empty', 'Deleted notes are stored in trash for 30 days before being removed.'
       );
       return;
     }
