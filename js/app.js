@@ -1750,95 +1750,6 @@
   }
 
   /* ==========================================================
-     Elastic scroll — iOS-style rubber-band bounce on the
-     main scrollable views. Touch only; no effect on desktop.
-     ========================================================== */
-
-  function wireElasticScroll(rootEl) {
-    const MAX_OVERSCROLL = 80;
-    const RESISTANCE = 0.45;
-
-    let active = null;
-    let startY = 0;
-    let pulling = false;
-    let direction = 0;
-
-    function pickScrollable(target) {
-      return target && target.closest ? target.closest('.view, .sub-view') : null;
-    }
-
-    function onTouchStart(e) {
-      if (e.touches.length !== 1) { active = null; return; }
-      const sc = pickScrollable(e.target);
-      if (!sc) { active = null; return; }
-      active = sc;
-      startY = e.touches[0].clientY;
-      pulling = false;
-      direction = 0;
-    }
-
-    function onTouchMove(e) {
-      if (!active || e.touches.length !== 1) return;
-
-      const y = e.touches[0].clientY;
-      const dy = y - startY;
-      const sc = active;
-      const atTop = sc.scrollTop <= 0;
-      const atBottom = sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 1;
-
-      if (!pulling) {
-        if (atTop && dy > 4) {
-          direction = 1;
-          pulling = true;
-          startY = y;
-          return;
-        } else if (atBottom && dy < -4) {
-          direction = -1;
-          pulling = true;
-          startY = y;
-          return;
-        } else {
-          return;
-        }
-      }
-
-      if (pulling) {
-        if (e.cancelable) e.preventDefault();
-
-        const signedDy = direction * (y - startY);
-        const magnitude = Math.max(0, signedDy);
-        const resisted = magnitude * RESISTANCE / (1 + magnitude / 220);
-        const clamped = Math.min(resisted, MAX_OVERSCROLL);
-
-        if (clamped <= 0) {
-          release();
-          return;
-        }
-
-        sc.style.transition = 'none';
-        sc.style.transform = 'translateY(' + (direction * clamped) + 'px)';
-      }
-    }
-
-    function release() {
-      if (!active) { pulling = false; return; }
-      const sc = active;
-      active = null;
-      if (!pulling) return;
-      pulling = false;
-
-      sc.style.transition = 'transform .38s cubic-bezier(.22,1,.36,1)';
-      sc.style.transform = '';
-      setTimeout(() => { sc.style.transition = ''; }, 420);
-    }
-
-    rootEl.addEventListener('touchstart', onTouchStart, { passive: true });
-    rootEl.addEventListener('touchmove', onTouchMove, { passive: false });
-    rootEl.addEventListener('touchend', release);
-    rootEl.addEventListener('touchcancel', release);
-  }
-
-  /* ==========================================================
      Long-press on a note (live or trashed)
      ========================================================== */
 
@@ -2111,7 +2022,6 @@
       renderSearch();
     });
 
-    /* ---- More page navigation ---- */
     const moreView = $('#view-more');
     moreView.addEventListener('click', (e) => {
       const nav = e.target.closest('[data-more-nav]');
@@ -2134,7 +2044,6 @@
     if (el.moreTrashBack)      el.moreTrashBack.addEventListener('click', closeMoreSub);
     if (el.moreTrashEmpty)     el.moreTrashEmpty.addEventListener('click', emptyTrash);
 
-    /* ---- Trash sheet ---- */
     el.trashSheetCancel.addEventListener('click', closeTrashSheet);
     el.trashSheetBackdrop.addEventListener('click', (e) => {
       if (e.target === el.trashSheetBackdrop) closeTrashSheet();
@@ -2150,7 +2059,6 @@
       else if (action === 'purge') purgeTrashed(id);
     });
 
-    /* ---- Save prompt ---- */
     if (el.savePromptCancel) el.savePromptCancel.addEventListener('click', cancelSavePrompt);
     if (el.savePromptSave)    el.savePromptSave.addEventListener('click', () => onSavePromptAction('save'));
     if (el.savePromptDiscard) el.savePromptDiscard.addEventListener('click', () => onSavePromptAction('discard'));
@@ -2158,7 +2066,6 @@
       if (e.target === el.savePromptBackdrop) cancelSavePrompt();
     });
 
-    /* ---- Note editor ---- */
     el.editorBack.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -2213,7 +2120,6 @@
       scheduleEditorSave();
     });
 
-    /* ---- Note action sheet ---- */
     el.sheetCancel.addEventListener('click', closeSheet);
     el.sheetBackdrop.addEventListener('click', (e) => {
       if (e.target === el.sheetBackdrop) closeSheet();
@@ -2231,14 +2137,12 @@
       else if (action === 'delete') deleteNote(id);
     });
 
-    /* ---- Confirm dialog ---- */
     el.dialogCancel.addEventListener('click', closeConfirm);
     el.dialogConfirm.addEventListener('click', runDialogAction);
     el.dialogBackdrop.addEventListener('click', (e) => {
       if (e.target === el.dialogBackdrop) closeConfirm();
     });
 
-    /* ---- Theme rows ---- */
     el.themeList.addEventListener('click', (e) => {
       const row = e.target.closest('.theme-row');
       if (!row) return;
@@ -2249,7 +2153,6 @@
       renderAccentSwatches();
     });
 
-    /* ---- Accent swatches ---- */
     el.accentSwatches.addEventListener('click', (e) => {
       const sw = e.target.closest('.swatch');
       if (!sw) return;
@@ -2342,7 +2245,6 @@
 
     renderAll();
     wireEvents();
-    wireElasticScroll(document);
     wireEditorViewport();
 
     document.addEventListener('visibilitychange', () => {
