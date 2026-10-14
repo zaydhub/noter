@@ -248,6 +248,40 @@
   }
 
   /* ==========================================================
+     Editor viewport — keyboard handling
+     ==========================================================
+     When the on-screen keyboard opens, Android shrinks the
+     visual viewport but not the layout viewport. A fixed
+     editor that stays 100dvh tall ends up half-hidden, and
+     the browser scrolls it into view — carrying the toolbar
+     and categories strip off the top with it. Constraining
+     the editor to visualViewport.height removes the reason
+     for the browser to scroll anything.
+     ========================================================== */
+
+  function syncEditorViewport() {
+    if (!el.editor) return;
+    if (el.editor.hidden || !state.editor) {
+      el.editor.style.height = '';
+      el.editor.style.top = '';
+      return;
+    }
+    const vv = global.visualViewport;
+    if (!vv) return;
+    el.editor.style.height = vv.height + 'px';
+    el.editor.style.top = vv.offsetTop + 'px';
+  }
+
+  function wireEditorViewport() {
+    const vv = global.visualViewport;
+    if (vv) {
+      vv.addEventListener('resize', syncEditorViewport);
+      vv.addEventListener('scroll', syncEditorViewport);
+    }
+    global.addEventListener('orientationchange', syncEditorViewport);
+  }
+
+  /* ==========================================================
      Home date strip
      ========================================================== */
 
@@ -1316,7 +1350,9 @@
     syncEditorChrome();
     el.editor.hidden = false;
     el.fab.classList.add('is-hidden');
+    syncEditorViewport();
     requestAnimationFrame(() => {
+      syncEditorViewport();
       autoGrowTitle();
       if (!state.editor || state.editor.mode !== 'edit') return;
       if (state.editor.isNew) el.editorTitle.focus({ preventScroll: true });
@@ -1381,6 +1417,7 @@
     el.editor.hidden = true;
     state.editor = null;
     el.fab.classList.toggle('is-hidden', state.view === 'more' || state.view === 'categories');
+    syncEditorViewport();
     renderAll();
     if (state.lastFocused && document.contains(state.lastFocused)) {
       try { state.lastFocused.focus({ preventScroll: true }); } catch (e) {}
@@ -1413,6 +1450,7 @@
         state.editor = null;
         el.editor.hidden = true;
         el.fab.classList.toggle('is-hidden', state.view === 'more' || state.view === 'categories');
+        syncEditorViewport();
         renderAll();
         showToast('Moved to Trash');
       }
@@ -2305,6 +2343,7 @@
     renderAll();
     wireEvents();
     wireElasticScroll(document);
+    wireEditorViewport();
 
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && !state.editor) {
