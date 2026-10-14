@@ -249,14 +249,6 @@
 
   /* ==========================================================
      Editor viewport — keyboard handling
-     ==========================================================
-     When the on-screen keyboard opens, Android shrinks the
-     visual viewport but not the layout viewport. A fixed
-     editor that stays 100dvh tall ends up half-hidden, and
-     the browser scrolls it into view — carrying the toolbar
-     and categories strip off the top with it. Constraining
-     the editor to visualViewport.height removes the reason
-     for the browser to scroll anything.
      ========================================================== */
 
   function syncEditorViewport() {
@@ -279,6 +271,128 @@
       vv.addEventListener('scroll', syncEditorViewport);
     }
     global.addEventListener('orientationchange', syncEditorViewport);
+  }
+
+  /* ==========================================================
+     Elastic scroll — disabled while the editor is in edit mode
+     so typing doesn't stutter. Re-enabled in view mode and
+     everywhere else in the app.
+     ========================================================== */
+
+  const elastic = {
+    enabled: false,
+    enable: function () {},
+    disable: function () {}
+  };
+
+  function wireElasticScroll(rootEl) {
+    const MAX_OVERSCROLL = 80;
+    const RESISTANCE = 0.45;
+
+    let active = null;
+    let startY = 0;
+    let pulling = false;
+    let direction = 0;
+
+    function pickScrollable(target) {
+      return target && target.closest ? target.closest('.view, .sub-view') : null;
+    }
+
+    function onTouchStart(e) {
+      if (e.touches.length !== 1) { active = null; return; }
+      const sc = pickScrollable(e.target);
+      if (!sc) { active = null; return; }
+      active = sc;
+      startY = e.touches[0].clientY;
+      pulling = false;
+      direction = 0;
+    }
+
+    function onTouchMove(e) {
+      if (!active || e.touches.length !== 1) return;
+
+      const y = e.touches[0].clientY;
+      const dy = y - startY;
+      const sc = active;
+      const atTop = sc.scrollTop <= 0;
+      const atBottom = sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 1;
+
+      if (!pulling) {
+        if (atTop && dy > 4) {
+          direction = 1;
+          pulling = true;
+          startY = y;
+          return;
+        } else if (atBottom && dy < -4) {
+          direction = -1;
+          pulling = true;
+          startY = y;
+          return;
+        } else {
+          return;
+        }
+      }
+
+      if (pulling) {
+        if (e.cancelable) e.preventDefault();
+
+        const signedDy = direction * (y - startY);
+        const magnitude = Math.max(0, signedDy);
+        const resisted = magnitude * RESISTANCE / (1 + magnitude / 220);
+        const clamped = Math.min(resisted, MAX_OVERSCROLL);
+
+        if (clamped <= 0) {
+          release();
+          return;
+        }
+
+        sc.style.transition = 'none';
+        sc.style.transform = 'translateY(' + (direction * clamped) + 'px)';
+      }
+    }
+
+    function release() {
+      if (!active) { pulling = false; return; }
+      const sc = active;
+      active = null;
+      if (!pulling) return;
+      pulling = false;
+
+      sc.style.transition = 'transform .38s cubic-bezier(.22,1,.36,1)';
+      sc.style.transform = '';
+      setTimeout(() => { sc.style.transition = ''; }, 420);
+    }
+
+    function attach() {
+      if (elastic.enabled) return;
+      elastic.enabled = true;
+      rootEl.addEventListener('touchstart', onTouchStart, { passive: true });
+      rootEl.addEventListener('touchmove', onTouchMove, { passive: false });
+      rootEl.addEventListener('touchend', release);
+      rootEl.addEventListener('touchcancel', release);
+    }
+
+    function detach() {
+      if (!elastic.enabled) return;
+      elastic.enabled = false;
+      rootEl.removeEventListener('touchstart', onTouchStart);
+      rootEl.removeEventListener('touchmove', onTouchMove);
+      rootEl.removeEventListener('touchend', release);
+      rootEl.removeEventListener('touchcancel', release);
+
+      if (active) {
+        const sc = active;
+        active = null;
+        pulling = false;
+        sc.style.transition = '';
+        sc.style.transform = '';
+      }
+    }
+
+    elastic.enable = attach;
+    elastic.disable = detach;
+
+    attach();
   }
 
   /* ==========================================================
@@ -1287,6 +1401,12 @@
     el.editor.classList.toggle('is-view-mode', !isEdit);
     el.editorMode.textContent = isEdit ? 'Done' : 'Edit';
     el.editorMode.setAttribute('aria-label', isEdit ? 'Save note' : 'Edit note');
+
+    if (isEdit) {
+      elastic.disable();
+    } else {
+      elastic.enable();
+    }
   }
 
   function enterEditMode() {
@@ -1417,6 +1537,7 @@
     el.editor.hidden = true;
     state.editor = null;
     el.fab.classList.toggle('is-hidden', state.view === 'more' || state.view === 'categories');
+    elastic.enable();
     syncEditorViewport();
     renderAll();
     if (state.lastFocused && document.contains(state.lastFocused)) {
@@ -1450,6 +1571,7 @@
         state.editor = null;
         el.editor.hidden = true;
         el.fab.classList.toggle('is-hidden', state.view === 'more' || state.view === 'categories');
+        elastic.enable();
         syncEditorViewport();
         renderAll();
         showToast('Moved to Trash');
@@ -2245,6 +2367,7 @@
 
     renderAll();
     wireEvents();
+    wireElasticScroll(document);
     wireEditorViewport();
 
     document.addEventListener('visibilitychange', () => {
