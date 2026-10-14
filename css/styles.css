@@ -1140,7 +1140,6 @@ html[data-theme="dark"] .cat-list-item { border: 1px solid var(--border); }
   padding: 6px 0 calc(20px + var(--safe-bottom));
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  will-change: scroll-position;
 }
 .editor-content::placeholder { color: var(--text-3); }
 
