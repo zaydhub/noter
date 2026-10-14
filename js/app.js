@@ -449,7 +449,7 @@
     renderGrouped(
       el.homeList,
       sorted,
-      emptyStateHtml('i-home', 'No notes for this day', 'Tap + to add new notes.')
+      emptyStateHtml('i-home', 'No notes for this day', 'Tap + to add')
     );
   }
 
@@ -494,7 +494,7 @@
     const all = applySort(NotesStore.live());
     if (!all.length) {
       el.searchList.innerHTML = emptyStateHtml(
-        'i-search', 'No notes yet', 'Tap + add new notes.'
+        'i-search', 'No notes yet', 'Tap + add'
       );
       return;
     }
