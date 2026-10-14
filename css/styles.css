@@ -382,7 +382,7 @@ html[data-theme="dark"] .date-chip {
 
 .list-root {
   flex: 1 1 auto;
-  padding: 0 16px calc(var(--tabbar-h) + var(--safe-bottom) + 92px);
+  padding: 0 16px calc(var(--safe-bottom) + 160px);
 }
 .view-header + .list-root { padding-top: 6px; }
 .view-header--title + .list-root { padding-top: 6px; }
@@ -1326,7 +1326,7 @@ html[data-theme="dark"] .dialog-btn--primary {
 .toast {
   position: fixed;
   left: 50%;
-  bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 20px);
+  bottom: calc(var(--safe-bottom) + 90px);
   z-index: 90;
   display: flex;
   align-items: center;
