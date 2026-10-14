@@ -539,7 +539,7 @@ html[data-theme="dark"] .note-item { border: 1px solid var(--border); }
 .fab {
   position: absolute;
   right: 18px;
-  bottom: calc(var(--tabbar-h) + var(--safe-bottom) + 18px);
+  bottom: calc(var(--safe-bottom) + 88px);
   z-index: 40;
   width: 56px; height: 56px;
   display: grid; place-items: center;
@@ -553,17 +553,26 @@ html[data-theme="dark"] .note-item { border: 1px solid var(--border); }
 .fab.is-hidden { opacity: 0; transform: scale(.5); pointer-events: none; }
 
 .tabbar {
-  position: relative;
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--safe-bottom) + 10px);
   z-index: 30;
-  flex: none;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  height: calc(var(--tabbar-h) + var(--safe-bottom));
-  padding-bottom: var(--safe-bottom);
-  background: var(--surface);
-  border-top: 1px solid var(--border);
+  height: 60px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.10), 0 2px 6px rgba(0, 0, 0, 0.04);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
 }
-html[data-theme="dark"] .tabbar { background: #161618; }
+html[data-theme="dark"] .tabbar {
+  background: rgba(28, 28, 30, 0.68);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.25);
+}
 .tab {
   display: flex;
   flex-direction: column;
