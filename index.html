@@ -19,19 +19,14 @@
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
   <defs>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
     <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.2 12 3l9 7.2V20a1.5 1.5 0 0 1-1.5 1.5h-4.2v-6h-6.6v6H4.5A1.5 1.5 0 0 1 3 20z"/></symbol>
     <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
-    <symbol id="i-star" viewBox="0 0 24 24">
-      <path d="M12 3.6l2.55 5.4 5.9.78-4.32 4.1 1.1 5.86L12 16.9l-5.23 2.84 1.1-5.86-4.32-4.1 5.9-.78z"/>
-    </symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 3.6l2.55 5.4 5.9.78-4.32 4.1 1.1 5.86L12 16.9l-5.23 2.84 1.1-5.86-4.32-4.1 5.9-.78z"/></symbol>
     <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/></symbol>
     <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
     <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
-    <symbol id="i-pin" viewBox="0 0 24 24">
-      <g transform="translate(12 11) rotate(45) scale(1.12) translate(-12 -11)">
-        <path d="M10 3.5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1V8l2 2v1.5h-3v7a1 1 0 0 1-2 0v-7H8V10l2-2z"/>
-      </g>
-    </symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><g transform="translate(12 11) rotate(45) scale(1.12) translate(-12 -11)"><path d="M10 3.5a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1V8l2 2v1.5h-3v7a1 1 0 0 1-2 0v-7H8V10l2-2z"/></g></symbol>
     <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9.5 7V5.2A1.2 1.2 0 0 1 10.7 4h2.6a1.2 1.2 0 0 1 1.2 1.2V7M6.5 7l.9 12.1A1.5 1.5 0 0 0 8.9 20.5h6.2a1.5 1.5 0 0 0 1.5-1.4L17.5 7"/></symbol>
     <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
     <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
@@ -40,95 +35,72 @@
     <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"/></symbol>
     <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.2 8.2 0 0 1 9.5 4 8.4 8.4 0 1 0 20 14.5z"/></symbol>
     <symbol id="i-auto" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17a8.5 8.5 0 0 0 0-17z" fill="currentColor" stroke="none"/></symbol>
-    <symbol id="i-palette" viewBox="0 0 24 24">
-      <path d="M12 3.5a8.5 8.5 0 0 0 0 17c1.1 0 1.8-.8 1.8-1.6 0-.5-.3-.9-.6-1.2-.3-.3-.5-.7-.5-1.2 0-.9.7-1.6 1.6-1.6h2A4.2 4.2 0 0 0 20.5 11c0-4.1-3.8-7.5-8.5-7.5z"/>
-      <circle cx="8.2" cy="11" r="1.1" fill="currentColor" stroke="none"/>
-      <circle cx="10.5" cy="7.6" r="1.1" fill="currentColor" stroke="none"/>
-      <circle cx="14.5" cy="7.6" r="1.1" fill="currentColor" stroke="none"/>
-      <circle cx="16.6" cy="11" r="1.1" fill="currentColor" stroke="none"/>
-    </symbol>
+    <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3.5a8.5 8.5 0 0 0 0 17c1.1 0 1.8-.8 1.8-1.6 0-.5-.3-.9-.6-1.2-.3-.3-.5-.7-.5-1.2 0-.9.7-1.6 1.6-1.6h2A4.2 4.2 0 0 0 20.5 11c0-4.1-3.8-7.5-8.5-7.5z"/><circle cx="8.2" cy="11" r="1.1" fill="currentColor" stroke="none"/><circle cx="10.5" cy="7.6" r="1.1" fill="currentColor" stroke="none"/><circle cx="14.5" cy="7.6" r="1.1" fill="currentColor" stroke="none"/><circle cx="16.6" cy="11" r="1.1" fill="currentColor" stroke="none"/></symbol>
     <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3.5v11M7.5 10.5 12 15l4.5-4.5M4.5 19.5h15"/></symbol>
     <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M4.5 19.5h15"/></symbol>
     <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3.8 21 20H3z"/><path d="M12 9.5v4.2"/><circle cx="12" cy="16.6" r=".9" fill="currentColor" stroke="none"/></symbol>
-    <symbol id="i-categories" viewBox="0 0 24 24">
-      <path d="M3 7.5a2 2 0 0 1 2-2h3.6a1 1 0 0 1 .7.3l1.4 1.4a1 1 0 0 0 .7.3H19a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-      <path d="M3 11h18"/>
-    </symbol>
-    <symbol id="i-grid" viewBox="0 0 24 24">
-      <rect x="3.5" y="3.5" width="7.5" height="7.5" rx="2"/>
-      <rect x="13" y="3.5" width="7.5" height="7.5" rx="2"/>
-      <rect x="3.5" y="13" width="7.5" height="7.5" rx="2"/>
-      <rect x="13" y="13" width="7.5" height="7.5" rx="2"/>
-    </symbol>
+    <symbol id="i-categories" viewBox="0 0 24 24"><path d="M3 7.5a2 2 0 0 1 2-2h3.6a1 1 0 0 1 .7.3l1.4 1.4a1 1 0 0 0 .7.3H19a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 11h18"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7.5" height="7.5" rx="2"/><rect x="13" y="3.5" width="7.5" height="7.5" rx="2"/><rect x="3.5" y="13" width="7.5" height="7.5" rx="2"/><rect x="13" y="13" width="7.5" height="7.5" rx="2"/></symbol>
     <symbol id="i-list" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
     <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="m14.5 6.5 3 3"/></symbol>
-    <symbol id="i-restore" viewBox="0 0 24 24">
-      <path d="M4 12a8 8 0 1 0 2.5-5.8"/>
-      <path d="M4 5v4h4"/>
-    </symbol>
-
-    <symbol id="c-thought" viewBox="0 0 24 24">
-      <path d="M4.5 11.5a4 4 0 0 1 4-4h7a4 4 0 0 1 0 8h-2.5l-3.5 3v-3h-1a4 4 0 0 1-4-4z"/>
-    </symbol>
-    <symbol id="c-idea" viewBox="0 0 24 24">
-      <path d="M12 4.5a5.5 5.5 0 0 0-3.3 9.9c.5.4.8.9.9 1.5l.1.6h4.6l.1-.6c.1-.6.4-1.1.9-1.5A5.5 5.5 0 0 0 12 4.5z"/>
-      <path d="M10 19h4"/>
-      <path d="M10.5 21.5h3"/>
-    </symbol>
-    <symbol id="c-work" viewBox="0 0 24 24">
-      <rect x="3.5" y="7.5" width="17" height="12" rx="2.5"/>
-      <path d="M9 7.5V6a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 6v1.5"/>
-      <path d="M3.5 13h17"/>
-    </symbol>
-    <symbol id="c-shopping" viewBox="0 0 24 24">
-      <path d="M5.5 8.5h13l-1 11a1.5 1.5 0 0 1-1.5 1.4H8a1.5 1.5 0 0 1-1.5-1.4l-1-11z"/>
-      <path d="M9 8.5V6.5a3 3 0 0 1 6 0v2"/>
-    </symbol>
-    <symbol id="c-important" viewBox="0 0 24 24">
-      <circle cx="12" cy="12" r="8.5"/>
-      <path d="M12 7.5v5"/>
-      <circle cx="12" cy="16" r=".9" fill="currentColor" stroke="none"/>
-    </symbol>
-    <symbol id="c-todo" viewBox="0 0 24 24">
-      <circle cx="12" cy="12" r="8.5"/>
-      <path d="m8.5 12 2.5 2.5 4.5-5"/>
-    </symbol>
-    <symbol id="c-study" viewBox="0 0 24 24">
-      <path d="M12 6.5C10.5 5.5 8.6 5 6.5 5c-1 0-1.8.1-2.5.3v12.4c.7-.2 1.5-.3 2.5-.3 2.1 0 4 .5 5.5 1.5"/>
-      <path d="M12 6.5C13.5 5.5 15.4 5 17.5 5c1 0 1.8.1 2.5.3v12.4c-.7-.2-1.5-.3-2.5-.3-2.1 0-4 .5-5.5 1.5"/>
-      <path d="M12 6.5v12.5"/>
-    </symbol>
-    <symbol id="c-other" viewBox="0 0 24 24">
-      <path d="M6 5.5A1.5 1.5 0 0 1 7.5 4h7L19 8.5v10a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 6 18.5v-13z"/>
-      <path d="M14.5 4v4.5H19"/>
-      <path d="M9 13h6"/>
-      <path d="M9 16h4"/>
-    </symbol>
-    <symbol id="c-tag" viewBox="0 0 24 24">
-      <path d="M4 11.2V5a1 1 0 0 1 1-1h6.2a1 1 0 0 1 .7.3l7.8 7.8a1 1 0 0 1 0 1.4l-6.2 6.2a1 1 0 0 1-1.4 0l-7.8-7.8a1 1 0 0 1-.3-.7z"/>
-      <circle cx="8" cy="8" r="1.2" fill="currentColor" stroke="none"/>
-    </symbol>
-    <symbol id="c-bookmark" viewBox="0 0 24 24">
-      <path d="M6.5 4h11a1 1 0 0 1 1 1v15.5l-6.5-4-6.5 4V5a1 1 0 0 1 1-1z"/>
-    </symbol>
-    <symbol id="c-heart" viewBox="0 0 24 24">
-      <path d="M12 20s-7-4.6-7-9.6A4.4 4.4 0 0 1 9.4 6 4.4 4.4 0 0 1 12 7.4 4.4 4.4 0 0 1 14.6 6 4.4 4.4 0 0 1 19 10.4c0 5-7 9.6-7 9.6z"/>
-    </symbol>
-    <symbol id="c-flag" viewBox="0 0 24 24">
-      <path d="M6 21V4"/>
-      <path d="M6 4.5h11.5l-2.5 3.5 2.5 3.5H6"/>
-    </symbol>
+    <symbol id="i-restore" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.5-5.8"/><path d="M4 5v4h4"/></symbol>
+    <symbol id="i-draw" viewBox="0 0 24 24"><path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17v3z"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 10h17M8 2.5v4M16 2.5v4"/></symbol>
+    <symbol id="c-thought" viewBox="0 0 24 24"><path d="M4.5 11.5a4 4 0 0 1 4-4h7a4 4 0 0 1 0 8h-2.5l-3.5 3v-3h-1a4 4 0 0 1-4-4z"/></symbol>
+    <symbol id="c-idea" viewBox="0 0 24 24"><path d="M12 4.5a5.5 5.5 0 0 0-3.3 9.9c.5.4.8.9.9 1.5l.1.6h4.6l.1-.6c.1-.6.4-1.1.9-1.5A5.5 5.5 0 0 0 12 4.5z"/><path d="M10 19h4"/><path d="M10.5 21.5h3"/></symbol>
+    <symbol id="c-work" viewBox="0 0 24 24"><rect x="3.5" y="7.5" width="17" height="12" rx="2.5"/><path d="M9 7.5V6a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 6v1.5"/><path d="M3.5 13h17"/></symbol>
+    <symbol id="c-shopping" viewBox="0 0 24 24"><path d="M5.5 8.5h13l-1 11a1.5 1.5 0 0 1-1.5 1.4H8a1.5 1.5 0 0 1-1.5-1.4l-1-11z"/><path d="M9 8.5V6.5a3 3 0 0 1 6 0v2"/></symbol>
+    <symbol id="c-important" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5"/><circle cx="12" cy="16" r=".9" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="c-todo" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m8.5 12 2.5 2.5 4.5-5"/></symbol>
+    <symbol id="c-study" viewBox="0 0 24 24"><path d="M12 6.5C10.5 5.5 8.6 5 6.5 5c-1 0-1.8.1-2.5.3v12.4c.7-.2 1.5-.3 2.5-.3 2.1 0 4 .5 5.5 1.5"/><path d="M12 6.5C13.5 5.5 15.4 5 17.5 5c1 0 1.8.1 2.5.3v12.4c-.7-.2-1.5-.3-2.5-.3-2.1 0-4 .5-5.5 1.5"/><path d="M12 6.5v12.5"/></symbol>
+    <symbol id="c-other" viewBox="0 0 24 24"><path d="M6 5.5A1.5 1.5 0 0 1 7.5 4h7L19 8.5v10a1.5 1.5 0 0 1-1.5 1.5h-10A1.5 1.5 0 0 1 6 18.5v-13z"/><path d="M14.5 4v4.5H19"/><path d="M9 13h6"/><path d="M9 16h4"/></symbol>
+    <symbol id="c-tag" viewBox="0 0 24 24"><path d="M4 11.2V5a1 1 0 0 1 1-1h6.2a1 1 0 0 1 .7.3l7.8 7.8a1 1 0 0 1 0 1.4l-6.2 6.2a1 1 0 0 1-1.4 0l-7.8-7.8a1 1 0 0 1-.3-.7z"/><circle cx="8" cy="8" r="1.2" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="c-bookmark" viewBox="0 0 24 24"><path d="M6.5 4h11a1 1 0 0 1 1 1v15.5l-6.5-4-6.5 4V5a1 1 0 0 1 1-1z"/></symbol>
+    <symbol id="c-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.6-7-9.6A4.4 4.4 0 0 1 9.4 6 4.4 4.4 0 0 1 12 7.4 4.4 4.4 0 0 1 14.6 6 4.4 4.4 0 0 1 19 10.4c0 5-7 9.6-7 9.6z"/></symbol>
+    <symbol id="c-flag" viewBox="0 0 24 24"><path d="M6 21V4"/><path d="M6 4.5h11.5l-2.5 3.5 2.5 3.5H6"/></symbol>
   </defs>
 </svg>
+
+<!-- Sidebar Overlay -->
+<div class="sidebar-overlay" id="sidebar-overlay" hidden>
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <img src="icon.png" alt="" class="row-icon-img">
+      <span class="sidebar-title">Noter</span>
+    </div>
+    <div class="sidebar-menu">
+      <button type="button" class="sidebar-item is-active" data-app-mode="noter">
+        <svg class="ico ico-20" aria-hidden="true"><use href="#i-home"/></svg>
+        <span>Noter</span>
+      </button>
+      <button type="button" class="sidebar-item" data-app-mode="draw">
+        <svg class="ico ico-20" aria-hidden="true"><use href="#i-draw"/></svg>
+        <span>Draw</span>
+      </button>
+      <button type="button" class="sidebar-item" data-app-mode="calendar">
+        <svg class="ico ico-20" aria-hidden="true"><use href="#i-calendar"/></svg>
+        <span>Calendar</span>
+      </button>
+    </div>
+  </div>
+</div>
 
 <div class="app">
 
   <main class="views" id="views">
 
+    <!-- ================= APP MODE: NOTER ================= -->
     <section class="view is-active" id="view-home" data-view="home" aria-label="Home">
       <header class="view-header view-header--title">
-        <p class="view-date" id="home-date">Saturday, October 10</p>
-        <h1 class="greeting" id="greeting-title">Good morning</h1>
+        <div class="home-header-row">
+          <button type="button" class="icon-btn" id="sidebar-open" aria-label="Open menu">
+            <svg class="ico ico-22" aria-hidden="true"><use href="#i-menu"/></svg>
+          </button>
+          <div>
+            <p class="view-date" id="home-date">Saturday, October 10</p>
+            <h1 class="greeting" id="greeting-title">Good morning</h1>
+          </div>
+        </div>
         <p class="greeting-sub" id="greeting-sub">What’s on your mind?</p>
         <div class="date-strip" id="home-date-strip" role="tablist" aria-label="Filter by date"></div>
       </header>
@@ -177,12 +149,11 @@
     </section>
 
     <section class="view view--nested" id="view-more" data-view="more" aria-label="More">
-
+      <!-- ... (Existing More section, unchanged) ... -->
       <div class="sub-view" id="more-main">
         <header class="view-header view-header--title">
           <h1 class="page-title">More</h1>
         </header>
-
         <div class="section">
           <h2 class="section-title">Appearance</h2>
           <div class="card">
@@ -201,7 +172,6 @@
             </button>
           </div>
         </div>
-
         <div class="section">
           <h2 class="section-title">Data</h2>
           <div class="card">
@@ -223,7 +193,6 @@
             </button>
           </div>
         </div>
-
         <div class="section">
           <h2 class="section-title">About</h2>
           <div class="card">
@@ -237,10 +206,8 @@
             </button>
           </div>
         </div>
-
         <p class="footer-note" id="storage-note"></p>
       </div>
-
       <div class="sub-view" id="more-appearance" hidden>
         <header class="view-header view-header--title">
           <div class="header-row">
@@ -272,7 +239,6 @@
           </div>
         </div>
       </div>
-
       <div class="sub-view" id="more-accent" hidden>
         <header class="view-header view-header--title">
           <div class="header-row">
@@ -288,7 +254,6 @@
           </div>
         </div>
       </div>
-
       <div class="sub-view" id="more-trash" hidden>
         <header class="view-header view-header--title">
           <div class="header-row">
@@ -303,7 +268,6 @@
         </header>
         <div id="trash-list" class="list-root"></div>
       </div>
-
       <div class="sub-view" id="more-about" hidden>
         <header class="view-header view-header--title">
           <div class="header-row">
@@ -330,15 +294,68 @@
           </div>
         </div>
       </div>
+    </section>
 
+    <!-- ================= APP MODE: DRAW ================= -->
+    <section class="view" id="view-draw-home" data-view="draw-home" aria-label="Draw Home">
+      <header class="view-header view-header--title">
+        <div class="home-header-row">
+          <button type="button" class="icon-btn" id="draw-sidebar-open" aria-label="Open menu">
+            <svg class="ico ico-22" aria-hidden="true"><use href="#i-menu"/></svg>
+          </button>
+          <div>
+            <p class="view-date" id="draw-home-date">Saturday, October 10</p>
+            <h1 class="greeting">Drawings</h1>
+          </div>
+        </div>
+        <p class="greeting-sub">What will you sketch?</p>
+        <div class="date-strip" id="draw-home-date-strip" role="tablist" aria-label="Filter by date"></div>
+      </header>
+      <div id="draw-home-list" class="list-root"></div>
+    </section>
+
+    <section class="view" id="view-draw-search" data-view="draw-search" aria-label="Search Drawings">
+      <header class="view-header view-header--search">
+        <div class="search-field">
+          <svg class="ico ico-20 search-ico" aria-hidden="true"><use href="#i-search"/></svg>
+          <input id="draw-search-input" type="text" placeholder="Search drawings" aria-label="Search drawings"
+                 autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search">
+          <button class="search-clear" id="draw-search-clear" type="button" aria-label="Clear search" hidden>
+            <svg class="ico ico-16" aria-hidden="true"><use href="#i-close"/></svg>
+          </button>
+        </div>
+        <div class="all-notes-bar">
+          <button type="button" class="all-notes-label" id="draw-all-label">See all drawings</button>
+        </div>
+      </header>
+      <div id="draw-search-list" class="list-root"></div>
+    </section>
+
+    <section class="view" id="view-draw-canvas" data-view="draw-canvas" aria-label="Canvas">
+      <header class="view-header view-header--title">
+        <div class="header-row">
+          <button type="button" class="icon-btn header-back" id="draw-canvas-back" aria-label="Back">
+            <svg class="ico ico-22" aria-hidden="true"><use href="#i-back"/></svg>
+          </button>
+          <h1 class="page-title header-title" id="draw-canvas-title">New Drawing</h1>
+        </div>
+      </header>
+      <div class="canvas-placeholder">
+        <p>Canvas will be built in Stage 2.</p>
+      </div>
     </section>
 
   </main>
 
+  <!-- ================= FAB ================= -->
   <button type="button" class="fab" id="fab" aria-label="Create new note">
     <svg class="ico ico-26" aria-hidden="true"><use href="#i-plus"/></svg>
   </button>
+  <button type="button" class="fab" id="draw-fab" aria-label="New drawing" hidden>
+    <svg class="ico ico-26" aria-hidden="true"><use href="#i-plus"/></svg>
+  </button>
 
+  <!-- ================= NOTER TAB BAR ================= -->
   <nav class="tabbar" id="tabbar" aria-label="Main navigation">
     <button type="button" class="tab is-active" data-tab="home" aria-current="page">
       <svg class="ico ico-22" aria-hidden="true"><use href="#i-home"/></svg><span>Home</span>
@@ -354,6 +371,21 @@
     </button>
   </nav>
 
+  <!-- ================= DRAW TAB BAR ================= -->
+  <nav class="tabbar" id="draw-tabbar" aria-label="Draw navigation" hidden>
+    <button type="button" class="tab is-active" data-draw-tab="draw-home" aria-current="page">
+      <svg class="ico ico-22" aria-hidden="true"><use href="#i-home"/></svg><span>Home</span>
+    </button>
+    <button type="button" class="tab" data-draw-tab="draw-canvas">
+      <svg class="ico ico-22" aria-hidden="true"><use href="#i-draw"/></svg><span>Draw</span>
+    </button>
+    <button type="button" class="tab" data-draw-tab="draw-search">
+      <svg class="ico ico-22" aria-hidden="true"><use href="#i-search"/></svg><span>Search</span>
+    </button>
+  </nav>
+
+  <!-- ... (Existing editor, sheets, dialogs, toast, etc. remain identical) ... -->
+
   <div class="editor" id="editor" role="dialog" aria-modal="true" aria-label="Note editor" hidden>
     <header class="editor-bar">
       <button type="button" class="icon-btn" id="editor-back" aria-label="Save and close">
@@ -361,27 +393,15 @@
       </button>
       <div class="editor-bar-actions">
         <button type="button" class="text-btn" id="editor-mode" aria-label="Edit note">Edit</button>
-        <button type="button" class="icon-btn icon-btn--circle" id="editor-pin" aria-label="Pin note" aria-pressed="false">
-          <svg class="ico ico-20" aria-hidden="true"><use href="#i-pin"/></svg>
-        </button>
-        <button type="button" class="icon-btn icon-btn--circle" id="editor-fav" aria-label="Mark as favorite" aria-pressed="false">
-          <svg class="ico ico-20" aria-hidden="true"><use href="#i-star"/></svg>
-        </button>
-        <button type="button" class="icon-btn icon-btn--circle icon-btn--danger" id="editor-delete" aria-label="Delete note">
-          <svg class="ico ico-20" aria-hidden="true"><use href="#i-trash"/></svg>
-        </button>
+        <button type="button" class="icon-btn icon-btn--circle" id="editor-pin" aria-label="Pin note" aria-pressed="false"><svg class="ico ico-20" aria-hidden="true"><use href="#i-pin"/></svg></button>
+        <button type="button" class="icon-btn icon-btn--circle" id="editor-fav" aria-label="Mark as favorite" aria-pressed="false"><svg class="ico ico-20" aria-hidden="true"><use href="#i-star"/></svg></button>
+        <button type="button" class="icon-btn icon-btn--circle icon-btn--danger" id="editor-delete" aria-label="Delete note"><svg class="ico ico-20" aria-hidden="true"><use href="#i-trash"/></svg></button>
       </div>
     </header>
-
-    <div class="editor-cats-bar">
-      <div class="cat-scroller" id="editor-categories" role="radiogroup" aria-label="Category"></div>
-    </div>
-
+    <div class="editor-cats-bar"><div class="cat-scroller" id="editor-categories" role="radiogroup" aria-label="Category"></div></div>
     <div class="editor-body">
-      <textarea class="editor-title" id="editor-title" placeholder="Title" aria-label="Note title"
-                rows="1" autocomplete="off" spellcheck="true"></textarea>
-      <textarea class="editor-content" id="editor-content" placeholder="Start writing…" aria-label="Note content"
-                autocomplete="off" spellcheck="true"></textarea>
+      <textarea class="editor-title" id="editor-title" placeholder="Title" aria-label="Note title" rows="1" autocomplete="off" spellcheck="true"></textarea>
+      <textarea class="editor-content" id="editor-content" placeholder="Start writing…" aria-label="Note content" autocomplete="off" spellcheck="true"></textarea>
     </div>
   </div>
 
@@ -417,8 +437,7 @@
       <div class="sheet-handle" aria-hidden="true"></div>
       <div class="cat-editor">
         <h2 class="cat-editor-title" id="cat-editor-title">New category</h2>
-        <input type="text" class="cat-editor-input" id="cat-editor-name" placeholder="Category name"
-               autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done" maxlength="24">
+        <input type="text" class="cat-editor-input" id="cat-editor-name" placeholder="Category name" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done" maxlength="24">
         <div class="icon-picker" id="cat-editor-icons" role="radiogroup" aria-label="Icon"></div>
         <div class="cat-editor-actions">
           <button type="button" class="cat-editor-btn cat-editor-btn--cancel" id="cat-editor-cancel">Cancel</button>
@@ -437,17 +456,16 @@
     </div>
   </div>
 
-  <!-- Save prompt — appears when closing the editor with unsaved changes. -->
-<div class="dialog-backdrop" id="save-prompt-backdrop" hidden>
-  <div class="dialog dialog--save-prompt" role="alertdialog" aria-modal="true" aria-labelledby="save-prompt-title">
-    <h2 class="dialog-title" id="save-prompt-title">Discard note?</h2>
-    <div class="dialog-actions">
-      <button type="button" class="dialog-btn dialog-btn--danger" id="save-prompt-discard">Discard</button>
-      <button type="button" class="dialog-btn dialog-btn--primary" id="save-prompt-save">Save</button>
-      <button type="button" class="dialog-btn" id="save-prompt-cancel">Cancel</button>
+  <div class="dialog-backdrop" id="save-prompt-backdrop" hidden>
+    <div class="dialog dialog--save-prompt" role="alertdialog" aria-modal="true" aria-labelledby="save-prompt-title">
+      <h2 class="dialog-title" id="save-prompt-title">Discard note?</h2>
+      <div class="dialog-actions">
+        <button type="button" class="dialog-btn dialog-btn--danger" id="save-prompt-discard">Discard</button>
+        <button type="button" class="dialog-btn dialog-btn--primary" id="save-prompt-save">Save</button>
+        <button type="button" class="dialog-btn" id="save-prompt-cancel">Cancel</button>
+      </div>
     </div>
   </div>
-</div>
 
   <div class="dialog-backdrop" id="dialog-backdrop" hidden>
     <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dialog-title" aria-describedby="dialog-msg">
