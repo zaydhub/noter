@@ -46,6 +46,7 @@
     <symbol id="i-restore" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.5-5.8"/><path d="M4 5v4h4"/></symbol>
     <symbol id="i-draw" viewBox="0 0 24 24"><path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17v3z"/></symbol>
     <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 10h17M8 2.5v4M16 2.5v4"/></symbol>
+
     <symbol id="c-thought" viewBox="0 0 24 24"><path d="M4.5 11.5a4 4 0 0 1 4-4h7a4 4 0 0 1 0 8h-2.5l-3.5 3v-3h-1a4 4 0 0 1-4-4z"/></symbol>
     <symbol id="c-idea" viewBox="0 0 24 24"><path d="M12 4.5a5.5 5.5 0 0 0-3.3 9.9c.5.4.8.9.9 1.5l.1.6h4.6l.1-.6c.1-.6.4-1.1.9-1.5A5.5 5.5 0 0 0 12 4.5z"/><path d="M10 19h4"/><path d="M10.5 21.5h3"/></symbol>
     <symbol id="c-work" viewBox="0 0 24 24"><rect x="3.5" y="7.5" width="17" height="12" rx="2.5"/><path d="M9 7.5V6a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 6v1.5"/><path d="M3.5 13h17"/></symbol>
@@ -149,7 +150,6 @@
     </section>
 
     <section class="view view--nested" id="view-more" data-view="more" aria-label="More">
-      <!-- ... (Existing More section, unchanged) ... -->
       <div class="sub-view" id="more-main">
         <header class="view-header view-header--title">
           <h1 class="page-title">More</h1>
@@ -384,8 +384,7 @@
     </button>
   </nav>
 
-  <!-- ... (Existing editor, sheets, dialogs, toast, etc. remain identical) ... -->
-
+  <!-- ================= EDITOR & SHEETS ================= -->
   <div class="editor" id="editor" role="dialog" aria-modal="true" aria-label="Note editor" hidden>
     <header class="editor-bar">
       <button type="button" class="icon-btn" id="editor-back" aria-label="Save and close">
@@ -393,15 +392,27 @@
       </button>
       <div class="editor-bar-actions">
         <button type="button" class="text-btn" id="editor-mode" aria-label="Edit note">Edit</button>
-        <button type="button" class="icon-btn icon-btn--circle" id="editor-pin" aria-label="Pin note" aria-pressed="false"><svg class="ico ico-20" aria-hidden="true"><use href="#i-pin"/></svg></button>
-        <button type="button" class="icon-btn icon-btn--circle" id="editor-fav" aria-label="Mark as favorite" aria-pressed="false"><svg class="ico ico-20" aria-hidden="true"><use href="#i-star"/></svg></button>
-        <button type="button" class="icon-btn icon-btn--circle icon-btn--danger" id="editor-delete" aria-label="Delete note"><svg class="ico ico-20" aria-hidden="true"><use href="#i-trash"/></svg></button>
+        <button type="button" class="icon-btn icon-btn--circle" id="editor-pin" aria-label="Pin note" aria-pressed="false">
+          <svg class="ico ico-20" aria-hidden="true"><use href="#i-pin"/></svg>
+        </button>
+        <button type="button" class="icon-btn icon-btn--circle" id="editor-fav" aria-label="Mark as favorite" aria-pressed="false">
+          <svg class="ico ico-20" aria-hidden="true"><use href="#i-star"/></svg>
+        </button>
+        <button type="button" class="icon-btn icon-btn--circle icon-btn--danger" id="editor-delete" aria-label="Delete note">
+          <svg class="ico ico-20" aria-hidden="true"><use href="#i-trash"/></svg>
+        </button>
       </div>
     </header>
-    <div class="editor-cats-bar"><div class="cat-scroller" id="editor-categories" role="radiogroup" aria-label="Category"></div></div>
+
+    <div class="editor-cats-bar">
+      <div class="cat-scroller" id="editor-categories" role="radiogroup" aria-label="Category"></div>
+    </div>
+
     <div class="editor-body">
-      <textarea class="editor-title" id="editor-title" placeholder="Title" aria-label="Note title" rows="1" autocomplete="off" spellcheck="true"></textarea>
-      <textarea class="editor-content" id="editor-content" placeholder="Start writing…" aria-label="Note content" autocomplete="off" spellcheck="true"></textarea>
+      <textarea class="editor-title" id="editor-title" placeholder="Title" aria-label="Note title"
+                rows="1" autocomplete="off" spellcheck="true"></textarea>
+      <textarea class="editor-content" id="editor-content" placeholder="Start writing…" aria-label="Note content"
+                autocomplete="off" spellcheck="true"></textarea>
     </div>
   </div>
 
@@ -437,7 +448,8 @@
       <div class="sheet-handle" aria-hidden="true"></div>
       <div class="cat-editor">
         <h2 class="cat-editor-title" id="cat-editor-title">New category</h2>
-        <input type="text" class="cat-editor-input" id="cat-editor-name" placeholder="Category name" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done" maxlength="24">
+        <input type="text" class="cat-editor-input" id="cat-editor-name" placeholder="Category name"
+               autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done" maxlength="24">
         <div class="icon-picker" id="cat-editor-icons" role="radiogroup" aria-label="Icon"></div>
         <div class="cat-editor-actions">
           <button type="button" class="cat-editor-btn cat-editor-btn--cancel" id="cat-editor-cancel">Cancel</button>
