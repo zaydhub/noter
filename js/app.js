@@ -1438,4 +1438,1359 @@
     if (!ed) return;
     clearTimeout(ed.timer);
     ed.timer = null;
-    if (!ed
+    if (!ed.dirty && !ed.isNew) return;
+    const note = ed.note;
+    note.title = el.editorTitle.value;
+    note.content = el.editorContent.value;
+    if (NotesStore.isBlank(note)) {
+      if (!ed.isNew) {
+        await NotesStore.softDelete(note.id);
+        ed.isNew = true;
+        ed.dirty = false;
+        renderAll();
+      }
+      return;
+    }
+    note.deletedAt = null;
+    note.updatedAt = Date.now();
+    await NotesStore.upsert(note);
+    ed.isNew = false;
+    ed.dirty = false;
+    el.editorDelete.disabled = false;
+  }
+
+  async function closeEditor(options) {
+    const opts = options || {};
+    if (state.closingEditor) return;
+    const ed = state.editor;
+    if (!ed) return;
+    state.closingEditor = true;
+
+    clearTimeout(ed.timer);
+    if (!opts.skipSave) {
+      try { await flushEditorSave(); } catch (e) {}
+    }
+
+    el.editor.classList.add('is-closing');
+    await new Promise((resolve) => {
+      let done = false;
+      const finish = () => { if (!done) { done = true; resolve(); } };
+      el.editor.addEventListener('animationend', finish, { once: true });
+      setTimeout(finish, 320);
+    });
+    el.editor.classList.remove('is-closing');
+    el.editor.hidden = true;
+    state.editor = null;
+    el.fab.classList.toggle('is-hidden', state.view === 'more' || state.view === 'categories');
+    renderAll();
+    if (state.lastFocused && document.contains(state.lastFocused)) {
+      try { state.lastFocused.focus({ preventScroll: true }); } catch (e) {}
+    }
+    state.lastFocused = null;
+    state.closingEditor = false;
+  }
+
+  function requestEditorClose() {
+    const ed = state.editor;
+    if (!ed) return;
+    if (ed.mode === 'edit' && editorHasChanges()) {
+      openSavePrompt();
+      return;
+    }
+    closeEditor();
+  }
+
+  function editorDeleteFlow() {
+    const ed = state.editor;
+    if (!ed || ed.isNew) return;
+    const id = ed.note.id;
+    requestConfirm({
+      title: 'Delete this note?',
+      message: 'It will stay in Trash for 30 days before being removed.',
+      confirmLabel: 'Delete',
+      destructive: true,
+      onConfirm: async () => {
+        await NotesStore.softDelete(id);
+        state.editor = null;
+        el.editor.hidden = true;
+        el.fab.classList.toggle('is-hidden', state.view === 'more' || state.view === 'categories');
+        renderAll();
+        showToast('Moved to Trash');
+      }
+    });
+  }
+
+  /* ==========================================================
+     Render all
+     ========================================================== */
+
+  function renderAllNotesViews() {
+    renderHome();
+    renderSearch();
+    renderDrawHome();
+    if (state.view === 'categories' || state.catDetail) renderCategoriesView();
+    if (isMoreSubOpen() && state.moreSub === 'trash') renderTrashView();
+  }
+     function renderAll() {
+    renderAllNotesViews();
+    renderCategoriesView();
+    renderStorageNote();
+    updateMoreValues();
+  }
+
+  function renderStorageNote() {
+    const n = NotesStore.live().length;
+    el.storageNote.textContent =
+      n + (n === 1 ? ' note stored on this device' : ' notes stored on this device');
+  }
+
+  /* ==========================================================
+     Sheet swipe-to-dismiss
+     ========================================================== */
+
+  function resetSheetStyles(backdropEl) {
+    if (!backdropEl) return;
+    const sheetEl = backdropEl.querySelector('.sheet');
+    if (!sheetEl) return;
+    sheetEl.style.transition = '';
+    sheetEl.style.transform = '';
+    sheetEl.style.opacity = '';
+  }
+
+  function wireSheetDrag(backdropEl) {
+    if (!backdropEl) return;
+    const sheetEl = backdropEl.querySelector('.sheet');
+    const handleEl = sheetEl ? sheetEl.querySelector('.sheet-handle') : null;
+    if (!sheetEl || !handleEl) return;
+
+    const isTop = backdropEl.classList.contains('sheet-backdrop--top');
+    let dragState = null;
+
+    handleEl.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      dragState = {
+        startY: e.clientY,
+        pointerId: e.pointerId,
+        height: sheetEl.offsetHeight
+      };
+      try { handleEl.setPointerCapture(e.pointerId); } catch (err) {}
+      sheetEl.style.transition = 'none';
+      e.preventDefault();
+    });
+
+    handleEl.addEventListener('pointermove', (e) => {
+      if (!dragState || e.pointerId !== dragState.pointerId) return;
+      let dy = e.clientY - dragState.startY;
+      if (isTop && dy > 0) dy = dy * 0.28;
+      if (!isTop && dy < 0) dy = dy * 0.28;
+      sheetEl.style.transform = 'translateY(' + dy + 'px)';
+      e.preventDefault();
+    });
+
+    handleEl.addEventListener('pointerup', (e) => {
+      if (!dragState || e.pointerId !== dragState.pointerId) return;
+      const dy = e.clientY - dragState.startY;
+      const d = dragState;
+      dragState = null;
+
+      const threshold = Math.min(120, d.height * 0.34);
+      const shouldDismiss = isTop
+        ? Math.abs(dy) > threshold
+        : dy > threshold;
+
+      if (shouldDismiss) {
+        const dir = isTop ? (dy < 0 ? -1 : 1) : 1;
+        sheetEl.style.transition = 'transform .22s cubic-bezier(.32,.72,0,1), opacity .22s ease';
+        sheetEl.style.transform = 'translateY(' + (dir * (d.height + 80)) + 'px)';
+        sheetEl.style.opacity = '0';
+        setTimeout(() => {
+          const cancel = sheetEl.querySelector('.sheet-cancel');
+          if (cancel) cancel.click();
+        }, 190);
+      } else {
+        sheetEl.style.transition = 'transform .24s cubic-bezier(.32,.72,0,1)';
+        sheetEl.style.transform = '';
+        setTimeout(() => { sheetEl.style.transition = ''; }, 260);
+      }
+    });
+
+    handleEl.addEventListener('pointercancel', () => {
+      dragState = null;
+      sheetEl.style.transition = '';
+      sheetEl.style.transform = '';
+    });
+  }
+
+  /* ==========================================================
+     Elastic scroll
+     ========================================================== */
+
+  function wireElasticScroll(rootEl) {
+    const MAX_OVERSCROLL = 80;
+    const RESISTANCE = 0.45;
+
+    let active = null;
+    let startY = 0;
+    let pulling = false;
+    let direction = 0;
+
+    function pickScrollable(target) {
+      return target && target.closest ? target.closest('.view, .sub-view') : null;
+    }
+
+    function onTouchStart(e) {
+      if (e.touches.length !== 1) { active = null; return; }
+      const sc = pickScrollable(e.target);
+      if (!sc) { active = null; return; }
+      active = sc;
+      startY = e.touches[0].clientY;
+      pulling = false;
+      direction = 0;
+    }
+
+    function onTouchMove(e) {
+      if (!active || e.touches.length !== 1) return;
+
+      const y = e.touches[0].clientY;
+      const dy = y - startY;
+      const sc = active;
+      const atTop = sc.scrollTop <= 0;
+      const atBottom = sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 1;
+
+      if (!pulling) {
+        if (atTop && dy > 4) {
+          direction = 1;
+          pulling = true;
+          startY = y;
+          return;
+        } else if (atBottom && dy < -4) {
+          direction = -1;
+          pulling = true;
+          startY = y;
+          return;
+        } else {
+          return;
+        }
+      }
+
+      if (pulling) {
+        if (e.cancelable) e.preventDefault();
+
+        const signedDy = direction * (y - startY);
+        const magnitude = Math.max(0, signedDy);
+        const resisted = magnitude * RESISTANCE / (1 + magnitude / 220);
+        const clamped = Math.min(resisted, MAX_OVERSCROLL);
+
+        if (clamped <= 0) {
+          release();
+          return;
+        }
+
+        sc.style.transition = 'none';
+        sc.style.transform = 'translateY(' + (direction * clamped) + 'px)';
+      }
+    }
+
+    function release() {
+      if (!active) { pulling = false; return; }
+      const sc = active;
+      active = null;
+      if (!pulling) return;
+      pulling = false;
+
+      sc.style.transition = 'transform .38s cubic-bezier(.22,1,.36,1)';
+      sc.style.transform = '';
+      setTimeout(() => { sc.style.transition = ''; }, 420);
+    }
+
+    rootEl.addEventListener('touchstart', onTouchStart, { passive: true });
+    rootEl.addEventListener('touchmove', onTouchMove, { passive: false });
+    rootEl.addEventListener('touchend', release);
+    rootEl.addEventListener('touchcancel', release);
+  }
+
+  /* ==========================================================
+     Long-press on a note (live or trashed)
+     ========================================================== */
+
+  let notePressTimer = null;
+  let notePressTarget = null;
+
+  function notePointerDown(e) {
+    const face = e.target.closest && e.target.closest('.note-face');
+    if (!face) return;
+    const item = face.closest('.note-item');
+    if (!item) return;
+    state.justLongPressed = false;
+    const isTrash = !!item.closest('#trash-list');
+    notePressTarget = {
+      id: item.dataset.id,
+      startX: e.clientX,
+      startY: e.clientY,
+      moved: false,
+      isTrash: isTrash
+    };
+    clearTimeout(notePressTimer);
+    notePressTimer = setTimeout(() => {
+      if (notePressTarget && !notePressTarget.moved) {
+        state.justLongPressed = true;
+        if (notePressTarget.isTrash) openTrashSheet(notePressTarget.id);
+        else openSheet(notePressTarget.id);
+      }
+    }, 480);
+  }
+
+  function notePointerMove(e) {
+    if (!notePressTarget || notePressTarget.moved) return;
+    const dx = Math.abs(e.clientX - notePressTarget.startX);
+    const dy = Math.abs(e.clientY - notePressTarget.startY);
+    if (dx > 8 || dy > 8) {
+      notePressTarget.moved = true;
+      clearTimeout(notePressTimer);
+    }
+  }
+
+  function notePointerEnd() {
+    clearTimeout(notePressTimer);
+    notePressTarget = null;
+  }
+
+  function handleListClick(e) {
+    const item = e.target.closest ? e.target.closest('.note-item') : null;
+    if (!item) return;
+    if (state.justLongPressed) {
+      state.justLongPressed = false;
+      return;
+    }
+    
+    const note = NotesStore.get(item.dataset.id);
+    if (!note) return;
+
+    const inTrash = !!item.closest('#trash-list');
+    if (inTrash) {
+      openTrashSheet(item.dataset.id);
+      return;
+    }
+    
+    if (note.type === 'drawing') {
+      openCanvas(item.dataset.id);
+      return;
+    }
+
+    const face = e.target.closest('.note-face');
+    if (face) {
+      openEditor(item.dataset.id);
+    }
+  }
+
+  function handleListKeydown(e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const face = e.target.closest && e.target.closest('.note-face');
+    if (!face) return;
+    e.preventDefault();
+    const item = face.closest('.note-item');
+    if (!item) return;
+    
+    const note = NotesStore.get(item.dataset.id);
+    if (!note) return;
+
+    if (item.closest('#trash-list')) {
+      openTrashSheet(item.dataset.id);
+    } else if (note.type === 'drawing') {
+      openCanvas(item.dataset.id);
+    } else {
+      openEditor(item.dataset.id);
+    }
+  }
+
+  /* ==========================================================
+     Categories long-press
+     ========================================================== */
+
+  let catPressTimer = null;
+  let catPressTarget = null;
+
+  function catPointerDown(e) {
+    const target = e.target.closest && e.target.closest('[data-cat-id]');
+    if (!target) return;
+    catPressTarget = {
+      id: target.dataset.catId,
+      startX: e.clientX,
+      startY: e.clientY,
+      moved: false
+    };
+    state.catLongPressFired = false;
+    clearTimeout(catPressTimer);
+    catPressTimer = setTimeout(() => {
+      if (catPressTarget && !catPressTarget.moved) {
+        state.catLongPressFired = true;
+        openCategoryActions(catPressTarget.id);
+      }
+    }, 480);
+  }
+
+  function catPointerMove(e) {
+    if (!catPressTarget || catPressTarget.moved) return;
+    const dx = Math.abs(e.clientX - catPressTarget.startX);
+    const dy = Math.abs(e.clientY - catPressTarget.startY);
+    if (dx > 8 || dy > 8) {
+      catPressTarget.moved = true;
+      clearTimeout(catPressTimer);
+    }
+  }
+
+  function catPointerEnd() {
+    clearTimeout(catPressTimer);
+    catPressTarget = null;
+  }
+
+  function catContentClick(e) {
+    if (e.target.closest('#cat-favorites')) {
+      openCategoryDetail('favorites');
+      return;
+    }
+    const hit = e.target.closest('[data-cat-id]');
+    if (!hit) return;
+    if (state.catLongPressFired) {
+      state.catLongPressFired = false;
+      return;
+    }
+    openCategoryDetail(hit.dataset.catId);
+  }
+
+  /* ==========================================================
+     Canvas & Drawing
+     ========================================================== */
+
+  function setupCanvas() {
+    const canvas = el.drawingCanvas;
+    if (!canvas) return;
+    const rect = canvas.parentElement.getBoundingClientRect();
+    const dpr = global.devicePixelRatio || 1;
+
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, rect.width, rect.height);
+
+    state.canvas = canvas;
+    state.ctx = ctx;
+    state.undoStack = [];
+    state.redoStack = [];
+    saveCanvasState();
+  }
+
+  function saveCanvasState() {
+    if (!state.canvas) return;
+    state.undoStack.push(state.canvas.toDataURL());
+    if (state.undoStack.length > 20) state.undoStack.shift();
+    state.redoStack = [];
+    updateUndoRedoButtons();
+  }
+
+  function updateUndoRedoButtons() {
+    if (el.toolUndo) el.toolUndo.style.opacity = state.undoStack.length > 1 ? '1' : '0.35';
+    if (el.toolRedo) el.toolRedo.style.opacity = state.redoStack.length > 0 ? '1' : '0.35';
+  }
+
+  function loadCanvasImage(dataUrl) {
+    if (!state.ctx || !state.canvas) return;
+    const img = new Image();
+    img.onload = () => {
+      const rect = state.canvas.parentElement.getBoundingClientRect();
+      state.ctx.clearRect(0, 0, rect.width, rect.height);
+      state.ctx.drawImage(img, 0, 0, rect.width, rect.height);
+    };
+    img.src = dataUrl;
+  }
+
+  function openCanvas(id) {
+    if (state.view === 'draw-canvas') return;
+    
+    let note;
+    if (id) {
+      note = NotesStore.get(id);
+      if (!note || note.deletedAt || note.type !== 'drawing') return;
+      state.canvasNoteId = id;
+      el.drawCanvasTitle.value = note.title;
+    } else {
+      note = NotesStore.createDraft('other', 'drawing');
+      state.canvasNoteId = null;
+      el.drawCanvasTitle.value = '';
+    }
+    
+    switchView('draw-canvas');
+    state.canvasDirty = false;
+
+    setTimeout(() => {
+      setupCanvas();
+      if (id && note.content) {
+        loadCanvasImage(note.content);
+      }
+    }, 50);
+  }
+
+  async function closeCanvas() {
+    if (!state.canvasNoteId && !state.canvasDirty) {
+      switchView('draw-home');
+      return;
+    }
+
+    const title = el.drawCanvasTitle.value.trim();
+    const dataUrl = state.canvas.toDataURL('image/png');
+    
+    const isBlank = state.canvas.toDataURL() === document.createElement('canvas').toDataURL();
+
+    if (!title && isBlank && !state.canvasNoteId) {
+       switchView('draw-home');
+       return;
+    }
+
+    let note;
+    if (state.canvasNoteId) {
+      note = NotesStore.get(state.canvasNoteId);
+    } else {
+      note = NotesStore.createDraft('other', 'drawing');
+    }
+
+    note.title = title;
+    note.content = dataUrl;
+    note.updatedAt = Date.now();
+    note.deletedAt = null;
+
+    await NotesStore.upsert(note);
+    state.canvasDirty = false;
+    switchView('draw-home');
+    renderDrawHome();
+    showToast('Drawing saved');
+  }
+
+  function setupCanvasEvents() {
+    const canvas = el.drawingCanvas;
+    if (!canvas) return;
+
+    let lastX = 0;
+    let lastY = 0;
+
+    function getPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top
+      };
+    }
+
+    function startDrawing(e) {
+      e.preventDefault();
+      state.isDrawing = true;
+      const pos = getPos(e);
+      lastX = pos.x;
+      lastY = pos.y;
+      
+      state.ctx.beginPath();
+      state.ctx.moveTo(lastX, lastY);
+    }
+
+    function draw(e) {
+      if (!state.isDrawing) return;
+      e.preventDefault();
+      const pos = getPos(e);
+      
+      state.ctx.lineTo(pos.x, pos.y);
+      
+      if (state.currentTool === 'eraser') {
+        state.ctx.strokeStyle = '#ffffff';
+        state.ctx.lineWidth = state.currentSize * 3;
+      } else {
+        state.ctx.strokeStyle = state.currentColor;
+        state.ctx.lineWidth = state.currentSize;
+      }
+      state.ctx.stroke();
+      
+      lastX = pos.x;
+      lastY = pos.y;
+      state.canvasDirty = true;
+    }
+
+    function stopDrawing(e) {
+      if (!state.isDrawing) return;
+      e.preventDefault();
+      state.isDrawing = false;
+      state.ctx.closePath();
+      saveCanvasState();
+    }
+
+    canvas.addEventListener('pointerdown', startDrawing);
+    canvas.addEventListener('pointermove', draw);
+    canvas.addEventListener('pointerup', stopDrawing);
+    canvas.addEventListener('pointercancel', stopDrawing);
+  }
+
+  /* ==========================================================
+     Back button
+     ========================================================== */
+
+  function handleBack() {
+    if (!el.sidebarOverlay.hidden) {
+      el.sidebarOverlay.hidden = true;
+      return true;
+    }
+
+    if (!el.savePromptBackdrop.hidden) {
+      cancelSavePrompt();
+      return true;
+    }
+
+    if (state.editor) {
+      requestEditorClose();
+      return true;
+    }
+
+    if (state.view === 'draw-canvas') {
+      closeCanvas();
+      return true;
+    }
+
+    if (state.trashSheetNoteId) { closeTrashSheet(); return true; }
+    if (state.catSheetId)       { closeCategoryActions(); return true; }
+    if (state.sheetNoteId)      { closeSheet(); return true; }
+
+    if (state.catEditor) { closeCategoryEditor(); return true; }
+
+    if (!el.sortSheetBackdrop.hidden) { closeSortSheet(); return true; }
+    if (!el.dialogBackdrop.hidden) { closeConfirm(); return true; }
+
+    if (isMoreSubOpen()) { closeMoreSub(); return true; }
+
+    if (state.catDetail) { closeCategoryDetail(); return true; }
+
+    if (state.view !== 'home' && state.view !== 'draw-home') {
+      if (state.appMode === 'draw') switchView('draw-home');
+      else switchView('home');
+      return true;
+    }
+
+    if (state.appMode === 'draw') {
+      switchAppMode('noter');
+      return true;
+    }
+
+    if (state.view !== 'home') {
+      switchView('home');
+      return true;
+    }
+
+    return false;
+  }
+
+  global.addEventListener('popstate', () => {
+    if (isCapacitor) return;
+    handleBack();
+  });
+
+  /* ==========================================================
+     Backup / export / import
+     ========================================================== */
+
+  async function exportBackup() {
+    const payload = {
+      app: 'noter', version: 1,
+      exportedAt: new Date().toISOString(),
+      notes: NotesStore.sorted(),
+      settings: Settings.snapshot()
+    };
+    const json = JSON.stringify(payload, null, 2);
+    const stamp = new Date().toISOString().slice(0, 10);
+    const filename = 'noter-backup-' + stamp + '.json';
+
+    if (capFilesystem && capShare) {
+      try {
+        const written = await capFilesystem.writeFile({
+          path: filename,
+          data: json,
+          directory: 'CACHE',
+          encoding: 'utf8'
+        });
+        await capShare.share({
+          title: 'Noter backup',
+          dialogTitle: 'Save or share backup',
+          url: written.uri
+        });
+        return;
+      } catch (err) {
+        const msg = String((err && err.message) || '').toLowerCase();
+        if (msg.indexOf('cancel') !== -1 || msg.indexOf('abort') !== -1) return;
+      }
+    }
+
+    try {
+      const blob = new Blob([json], { type: 'application/json' });
+      const file = new File([blob], filename, { type: 'application/json' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: 'Noter backup' });
+          return;
+        } catch (err) {
+          if (err && err.name === 'AbortError') return;
+        }
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    } catch (err) {
+      showToast('Export failed');
+    }
+  }
+
+  function triggerImport() {
+    el.importFile.value = '';
+    el.importFile.click();
+  }
+
+  async function handleImportFile(file) {
+    if (!file) return;
+    let data;
+    try {
+      data = JSON.parse(await file.text());
+    } catch (err) {
+      requestConfirm({ title: 'Import failed', message: 'That file could not be read as a Noter backup.', confirmLabel: 'OK', onConfirm: null });
+      return;
+    }
+    const notes = Array.isArray(data) ? data : (data && Array.isArray(data.notes) ? data.notes : null);
+    if (!notes) {
+      requestConfirm({ title: 'Import failed', message: 'No notes were found in that file.', confirmLabel: 'OK', onConfirm: null });
+      return;
+    }
+    const clean = notes.filter((n) => n && typeof n === 'object');
+    if (!clean.length) {
+      requestConfirm({ title: 'Nothing to import', message: 'That backup does not contain any notes.', confirmLabel: 'OK', onConfirm: null });
+      return;
+    }
+    requestConfirm({
+      title: 'Import ' + clean.length + (clean.length === 1 ? ' note?' : ' notes?'),
+      message: 'Existing notes are kept unless the imported copy is newer.',
+      confirmLabel: 'Import',
+      onConfirm: async () => {
+        try {
+          const result = await NotesStore.merge(clean);
+          if (data && data.settings) Settings.restore(data.settings);
+          renderAll();
+          syncThemeUI();
+          renderAccentSwatches();
+          renderNoterDateStrip();
+          renderDrawDateStrip();
+          updateMoreValues();
+          if (isMoreSubOpen() && state.moreSub === 'trash') renderTrashView();
+          const parts = [];
+          if (result.added) parts.push(result.added + ' added');
+          if (result.updated) parts.push(result.updated + ' updated');
+          if (result.skipped) parts.push(result.skipped + ' kept');
+          showToast(parts.length ? 'Imported: ' + parts.join(', ') : 'Nothing new to import');
+        } catch (err) {
+          showToast('Import failed');
+        }
+      }
+    });
+  }
+
+  /* ==========================================================
+     Theme + accent
+     ========================================================== */
+
+  function syncThemeUI() {
+    const current = Settings.getTheme();
+    const rows = $$('.theme-row', el.themeList);
+    for (const row of rows) {
+      row.setAttribute('aria-checked', row.dataset.themeOpt === current ? 'true' : 'false');
+    }
+    updateMoreValues();
+  }
+
+  function renderAccentSwatches() {
+    if (!el.accentSwatches) return;
+    const current = Settings.getAccent();
+    const resolved = Settings.resolvedTheme();
+    const palette = Settings.PALETTE;
+
+    let html = '';
+    for (let i = 0; i < palette.length; i++) {
+      const p = palette[i];
+      const mode = resolved === 'dark' ? p.dark : p.light;
+      const checked = p.id === current;
+      html += (
+        '<button type="button" class="swatch" role="radio" ' +
+                'data-accent="' + p.id + '" ' +
+                'aria-checked="' + (checked ? 'true' : 'false') + '" ' +
+                'aria-label="' + escapeHtml(p.name) + '" ' +
+                'title="' + escapeHtml(p.name) + '" ' +
+                'style="--swatch-color:' + mode.bg + ';--swatch-ink:' + mode.ink + '">' +
+          '<span class="swatch-check" aria-hidden="true">' +
+            '<svg class="ico" viewBox="0 0 24 24"><use href="#i-check"/></svg>' +
+          '</span>' +
+        '</button>'
+      );
+    }
+    el.accentSwatches.innerHTML = html;
+  }
+
+  /* ==========================================================
+     Event wiring
+     ========================================================== */
+
+  function wireEvents() {
+    // Sidebar
+    if (el.sidebarOpen) el.sidebarOpen.addEventListener('click', () => { el.sidebarOverlay.hidden = false; });
+    if (el.drawSidebarOpen) el.drawSidebarOpen.addEventListener('click', () => { el.sidebarOverlay.hidden = false; });
+    el.sidebarOverlay.addEventListener('click', (e) => {
+      if (e.target === el.sidebarOverlay) el.sidebarOverlay.hidden = true;
+    });
+    el.sidebarItems.forEach(item => {
+      item.addEventListener('click', () => switchAppMode(item.dataset.appMode));
+    });
+
+    // Noter Tabs
+    el.tabbar.addEventListener('click', (e) => {
+      const tab = e.target.closest('.tab');
+      if (!tab) return;
+      const name = tab.dataset.tab;
+      if (!name || name === state.view) return;
+      switchView(name);
+    });
+
+    // FABs
+    el.fab.addEventListener('click', () => openEditor(null));
+    el.drawFab.addEventListener('click', () => openCanvas(null));
+
+    // Canvas Buttons
+    el.drawCanvasBack.addEventListener('click', closeCanvas);
+    el.drawCanvasSave.addEventListener('click', closeCanvas);
+    
+    el.toolPen.addEventListener('click', () => {
+      state.currentTool = 'pen';
+      el.toolPen.classList.add('is-active');
+      el.toolEraser.classList.remove('is-active');
+    });
+
+    el.toolEraser.addEventListener('click', () => {
+      state.currentTool = 'eraser';
+      el.toolEraser.classList.add('is-active');
+      el.toolPen.classList.remove('is-active');
+    });
+
+    el.colorSwatches.addEventListener('click', (e) => {
+      const sw = e.target.closest('.color-swatch');
+      if (!sw) return;
+      state.currentColor = sw.dataset.color;
+      $$('.color-swatch', el.colorSwatches).forEach(s => s.classList.remove('is-active'));
+      sw.classList.add('is-active');
+      // Auto-switch to pen if picking a color
+      if (state.currentTool === 'eraser') {
+        state.currentTool = 'pen';
+        el.toolPen.classList.add('is-active');
+        el.toolEraser.classList.remove('is-active');
+      }
+    });
+
+    el.toolSize.addEventListener('input', (e) => {
+      state.currentSize = parseInt(e.target.value, 10);
+    });
+
+    el.toolUndo.addEventListener('click', () => {
+      if (state.undoStack.length <= 1) return;
+      const currentState = state.undoStack.pop();
+      state.redoStack.push(currentState);
+      
+      const prevState = state.undoStack[state.undoStack.length - 1];
+      const img = new Image();
+      img.onload = () => {
+        const rect = state.canvas.parentElement.getBoundingClientRect();
+        state.ctx.clearRect(0, 0, rect.width, rect.height);
+        state.ctx.drawImage(img, 0, 0, rect.width, rect.height);
+      };
+      img.src = prevState;
+      updateUndoRedoButtons();
+    });
+
+    el.toolRedo.addEventListener('click', () => {
+      if (state.redoStack.length === 0) return;
+      const nextState = state.redoStack.pop();
+      state.undoStack.push(nextState);
+      
+      const img = new Image();
+      img.onload = () => {
+        const rect = state.canvas.parentElement.getBoundingClientRect();
+        state.ctx.clearRect(0, 0, rect.width, rect.height);
+        state.ctx.drawImage(img, 0, 0, rect.width, rect.height);
+      };
+      img.src = nextState;
+      updateUndoRedoButtons();
+    });
+
+    el.toolClear.addEventListener('click', () => {
+      requestConfirm({
+        title: 'Clear canvas?',
+        message: 'This will erase everything.',
+        confirmLabel: 'Clear',
+        destructive: true,
+        onConfirm: () => {
+          const rect = state.canvas.parentElement.getBoundingClientRect();
+          state.ctx.fillStyle = '#ffffff';
+          state.ctx.fillRect(0, 0, rect.width, rect.height);
+          saveCanvasState();
+          state.canvasDirty = true;
+        }
+      });
+    });
+
+    // Note lists
+    const noteLists = [el.homeList, el.searchList, el.catContent, el.trashList, el.drawHomeList];
+    for (const list of noteLists) {
+      list.addEventListener('click', handleListClick);
+      list.addEventListener('keydown', handleListKeydown);
+      list.addEventListener('pointerdown', notePointerDown, { passive: true });
+      list.addEventListener('pointermove', notePointerMove, { passive: true });
+      list.addEventListener('pointerup', notePointerEnd);
+      list.addEventListener('pointercancel', notePointerEnd);
+      list.addEventListener('contextmenu', (ev) => {
+        if (ev.target.closest && ev.target.closest('.note-face')) {
+          ev.preventDefault();
+        }
+      });
+    }
+
+    // Date Strips
+    if (el.homeDateStrip) {
+      el.homeDateStrip.addEventListener('click', (e) => {
+        const chip = e.target.closest('.date-chip');
+        if (!chip) return;
+        const ts = Number(chip.dataset.day);
+        if (!Number.isFinite(ts)) return;
+        if (state.homeDate === ts) return;
+        state.homeDate = ts;
+        renderNoterDateStrip();
+        renderHome();
+      });
+    }
+
+    if (el.drawHomeDateStrip) {
+      el.drawHomeDateStrip.addEventListener('click', (e) => {
+        const chip = e.target.closest('.date-chip');
+        if (!chip) return;
+        const ts = Number(chip.dataset.day);
+        if (!Number.isFinite(ts)) return;
+        if (state.drawHomeDate === ts) return;
+        state.drawHomeDate = ts;
+        state.drawSearchExpanded = false; // Reset search expansion when changing dates
+        el.drawSearchInput.value = '';
+        renderDrawDateStrip();
+        renderDrawHome();
+      });
+    }
+
+    // Categories
+    el.catContent.addEventListener('pointerdown', catPointerDown, { passive: true });
+    el.catContent.addEventListener('pointermove', catPointerMove, { passive: true });
+    el.catContent.addEventListener('pointerup', catPointerEnd);
+    el.catContent.addEventListener('pointercancel', catPointerEnd);
+    el.catContent.addEventListener('click', catContentClick);
+
+    // Noter Search
+    let searchRaf = 0;
+    el.searchInput.addEventListener('input', () => {
+      if (searchRaf) return;
+      searchRaf = requestAnimationFrame(() => { searchRaf = 0; renderSearch(); });
+    });
+
+    el.searchClear.addEventListener('click', () => {
+      el.searchInput.value = '';
+      renderSearch();
+      el.searchInput.focus({ preventScroll: true });
+    });
+
+    el.allNotesLabel.addEventListener('click', () => {
+      state.searchExpanded = !state.searchExpanded;
+      renderSearch();
+    });
+
+    el.allNotesSort.addEventListener('click', openSortSheet);
+
+    const searchView = $('#view-search');
+    searchView.addEventListener('scroll', () => {
+      el.searchHeader.classList.toggle('is-scrolled', searchView.scrollTop > 2);
+    }, { passive: true });
+
+    // Draw Search
+    let drawSearchRaf = 0;
+    el.drawSearchInput.addEventListener('input', () => {
+      if (drawSearchRaf) return;
+      drawSearchRaf = requestAnimationFrame(() => { drawSearchRaf = 0; renderDrawHome(); });
+    });
+
+    el.drawSearchClear.addEventListener('click', () => {
+      el.drawSearchInput.value = '';
+      renderDrawHome();
+      el.drawSearchInput.focus({ preventScroll: true });
+    });
+
+    el.drawAllLabel.addEventListener('click', () => {
+      state.drawSearchExpanded = !state.drawSearchExpanded;
+      el.drawSearchInput.value = '';
+      renderDrawHome();
+    });
+
+    // Categories UI
+    el.catBack.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeCategoryDetail();
+    });
+
+    el.catViewToggle.addEventListener('click', () => {
+      const next = Settings.getCategoryView() === 'grid' ? 'list' : 'grid';
+      Settings.setCategoryView(next);
+      renderCategoriesView();
+    });
+
+    el.catAdd.addEventListener('click', () => openCategoryEditor('add'));
+
+    el.catSheetCancel.addEventListener('click', closeCategoryActions);
+    el.catSheetBackdrop.addEventListener('click', (e) => {
+      if (e.target === el.catSheetBackdrop) closeCategoryActions();
+    });
+
+    el.catSheetActions.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-cat-action]');
+      if (!btn) return;
+      const action = btn.dataset.catAction;
+      const id = state.catSheetId;
+      if (!id) return;
+
+      if (action === 'rename') {
+        closeCategoryActions();
+        openCategoryEditor('rename', id);
+        return;
+      }
+      if (action === 'delete') {
+        closeCategoryActions();
+        requestDeleteCategory(id);
+        return;
+      }
+    });
+
+    el.catEditorCancel.addEventListener('click', closeCategoryEditor);
+    el.catEditorBackdrop.addEventListener('click', (e) => {
+      if (e.target === el.catEditorBackdrop) closeCategoryEditor();
+    });
+    el.catEditorSave.addEventListener('click', saveCategoryEditor);
+    el.catEditorName.addEventListener('input', syncCategoryEditorSave);
+    el.catEditorName.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (!el.catEditorSave.disabled) saveCategoryEditor();
+      }
+    });
+
+    el.catEditorIcons.addEventListener('click', (e) => {
+      const opt = e.target.closest('.icon-opt');
+      if (!opt || !state.catEditor) return;
+      state.catEditor.icon = opt.dataset.icon;
+      renderCategoryIconPicker();
+    });
+
+    // Sort
+    el.sortSheetCancel.addEventListener('click', closeSortSheet);
+    el.sortSheetBackdrop.addEventListener('click', (e) => {
+      if (e.target === el.sortSheetBackdrop) closeSortSheet();
+    });
+    el.sortSheetActions.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-sort]');
+      if (!btn) return;
+      Settings.setSort(btn.dataset.sort);
+      closeSortSheet();
+      renderSearch();
+    });
+
+    // More Menu
+    const moreView = $('#view-more');
+    moreView.addEventListener('click', (e) => {
+      const nav = e.target.closest('[data-more-nav]');
+      if (nav) {
+        showMoreSub(nav.dataset.moreNav);
+        return;
+      }
+      const actionBtn = e.target.closest('[data-action]');
+      if (actionBtn) {
+        const action = actionBtn.dataset.action;
+        if (action === 'export') exportBackup();
+        else if (action === 'import') triggerImport();
+        return;
+      }
+    });
+
+    if (el.moreAppearanceBack) el.moreAppearanceBack.addEventListener('click', closeMoreSub);
+    if (el.moreAccentBack)     el.moreAccentBack.addEventListener('click', closeMoreSub);
+    if (el.moreAboutBack)      el.moreAboutBack.addEventListener('click', closeMoreSub);
+    if (el.moreTrashBack)      el.moreTrashBack.addEventListener('click', closeMoreSub);
+    if (el.moreTrashEmpty)     el.moreTrashEmpty.addEventListener('click', emptyTrash);
+
+    // Trash
+    el.trashSheetCancel.addEventListener('click', closeTrashSheet);
+    el.trashSheetBackdrop.addEventListener('click', (e) => {
+      if (e.target === el.trashSheetBackdrop) closeTrashSheet();
+    });
+    el.trashSheetActions.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-trash-action]');
+      if (!btn) return;
+      const action = btn.dataset.trashAction;
+      const id = state.trashSheetNoteId;
+      if (!id) return;
+      closeTrashSheet();
+      if (action === 'restore') await restoreTrashed(id);
+      else if (action === 'purge') purgeTrashed(id);
+    });
+
+    // Save prompt
+    if (el.savePromptCancel) el.savePromptCancel.addEventListener('click', cancelSavePrompt);
+    if (el.savePromptSave)    el.savePromptSave.addEventListener('click', () => onSavePromptAction('save'));
+    if (el.savePromptDiscard) el.savePromptDiscard.addEventListener('click', () => onSavePromptAction('discard'));
+    el.savePromptBackdrop.addEventListener('click', (e) => {
+      if (e.target === el.savePromptBackdrop) cancelSavePrompt();
+    });
+
+    // Note Editor
+    el.editorBack.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      requestEditorClose();
+    });
+
+    el.editorMode.addEventListener('click', async () => {
+      const ed = state.editor;
+      if (!ed) return;
+      if (ed.mode === 'view') { enterEditMode(); return; }
+      await flushEditorSave();
+      const current = state.editor;
+      if (!current) return;
+      if (current.isNew) { closeEditor({ skipSave: true }); return; }
+      exitEditMode();
+      showToast('Note saved');
+    });
+
+    el.editorTitle.addEventListener('input', () => { autoGrowTitle(); scheduleEditorSave(); });
+    el.editorContent.addEventListener('input', scheduleEditorSave);
+
+    el.editorPin.addEventListener('click', () => {
+      const ed = state.editor;
+      if (!ed) return;
+      ed.note.pinned = !ed.note.pinned;
+      ed.dirty = true;
+      syncEditorChrome();
+      scheduleEditorSave();
+      showToast(ed.note.pinned ? 'Pinned' : 'Unpinned');
+    });
+
+    el.editorFav.addEventListener('click', () => {
+      const ed = state.editor;
+      if (!ed) return;
+      ed.note.favorite = !ed.note.favorite;
+      ed.dirty = true;
+      syncEditorChrome();
+      scheduleEditorSave();
+      showToast(ed.note.favorite ? 'Added to favorites' : 'Removed from favorites');
+    });
+
+    el.editorDelete.addEventListener('click', editorDeleteFlow);
+
+    el.editorCats.addEventListener('click', (e) => {
+      const chip = e.target.closest('.chip');
+      if (!chip) return;
+      const ed = state.editor;
+      if (!ed) return;
+      ed.note.category = chip.dataset.cat;
+      ed.dirty = true;
+      syncEditorChrome();
+      scheduleEditorSave();
+    });
+
+    // Note action sheet
+    el.sheetCancel.addEventListener('click', closeSheet);
+    el.sheetBackdrop.addEventListener('click', (e) => {
+      if (e.target === el.sheetBackdrop) closeSheet();
+    });
+
+    el.sheetActions.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.sheet-btn');
+      if (!btn) return;
+      const action = btn.dataset.sheet;
+      const id = state.sheetNoteId;
+      if (!id) return;
+      closeSheet();
+      if (action === 'pin') await togglePin(id);
+      else if (action === 'fav') await toggleFavorite(id);
+      else if (action === 'delete') deleteNote(id);
+    });
+
+    // Confirm dialog
+    el.dialogCancel.addEventListener('click', closeConfirm);
+    el.dialogConfirm.addEventListener('click', runDialogAction);
+    el.dialogBackdrop.addEventListener('click', (e) => {
+      if (e.target === el.dialogBackdrop) closeConfirm();
+    });
+
+    // Theme + Accent
+    el.themeList.addEventListener('click', (e) => {
+      const row = e.target.closest('.theme-row');
+      if (!row) return;
+      const opt = row.dataset.themeOpt;
+      if (!opt) return;
+      Settings.setTheme(opt);
+      syncThemeUI();
+      renderAccentSwatches();
+    });
+
+    el.accentSwatches.addEventListener('click', (e) => {
+      const sw = e.target.closest('.swatch');
+      if (!sw) return;
+      Settings.setAccent(sw.dataset.accent);
+      renderAccentSwatches();
+      updateMoreValues();
+    });
+
+    el.importFile.addEventListener('change', () => {
+      const file = el.importFile.files && el.importFile.files[0];
+      if (file) handleImportFile(file);
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      if (!el.sidebarOverlay.hidden) { el.sidebarOverlay.hidden = true; return; }
+      if (!el.savePromptBackdrop.hidden) { cancelSavePrompt(); return; }
+      if (state.catEditor) { closeCategoryEditor(); return; }
+      if (state.catSheetId) { closeCategoryActions(); return; }
+      if (state.trashSheetNoteId) { closeTrashSheet(); return; }
+      if (!el.sortSheetBackdrop.hidden) { closeSortSheet(); return; }
+      if (state.view === 'draw-canvas') { closeCanvas(); return; }
+      if (state.editor) { requestEditorClose(); return; }
+      if (!el.dialogBackdrop.hidden) { closeConfirm(); return; }
+      if (!el.sheetBackdrop.hidden) { closeSheet(); return; }
+      if (isMoreSubOpen()) { closeMoreSub(); }
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden' && state.editor) flushEditorSave();
+    });
+
+    global.addEventListener('pagehide', () => {
+      if (state.editor) flushEditorSave();
+    });
+
+    Settings.onThemeChange(() => {
+      renderAccentSwatches();
+      updateMoreValues();
+      syncStatusBar();
+    });
+
+    wireSheetDrag(el.sheetBackdrop);
+    wireSheetDrag(el.trashSheetBackdrop);
+    wireSheetDrag(el.catSheetBackdrop);
+    wireSheetDrag(el.catEditorBackdrop);
+    wireSheetDrag(el.sortSheetBackdrop);
+
+    setupCanvasEvents();
+
+    if (capApp && typeof capApp.addListener === 'function') {
+      try {
+        capApp.addListener('backButton', () => {
+          try {
+            const closed = handleBack();
+            if (!closed) showExitConfirm();
+          } catch (err) {
+            showExitConfirm();
+          }
+        });
+      } catch (e) {}
+    }
+  }
+
+  /* ==========================================================
+     Boot
+     ========================================================== */
+
+  async function boot() {
+    Settings.applyTheme();
+    syncStatusBar();
+    syncThemeUI();
+    renderAccentSwatches();
+    updateGreeting();
+    renderNoterDateStrip();
+    renderDrawDateStrip();
+    updateMoreValues();
+    setInterval(updateGreeting, 60000);
+
+    try {
+      await NotesStore.init();
+    } catch (err) {
+      el.homeList.innerHTML = emptyStateHtml(
+        'i-warn',
+        'Storage unavailable',
+        'Noter could not open its local database. Private browsing mode can cause this.'
+      );
+      return;
+    }
+
+    try {
+      const purged = await NotesStore.purgeExpired();
+      if (purged > 0) console.log('[Noter] purged ' + purged + ' expired note(s)');
+    } catch (e) { /* ignore */ }
+
+    renderAll();
+    wireEvents();
+    wireElasticScroll(document);
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && !state.editor) {
+        updateGreeting();
+        const todayMid = startOfDay(Date.now());
+        if (state.homeDateInitialized && state.homeDate != null) {
+          const selectedOffset = Math.round((state.homeDate - todayMid) / DAY);
+          if (selectedOffset < -15 || selectedOffset > 15) {
+            state.homeDate = todayMid;
+            renderNoterDateStrip();
+          }
+        }
+        if (state.drawHomeDateInitialized && state.drawHomeDate != null) {
+          const selectedOffset = Math.round((state.drawHomeDate - todayMid) / DAY);
+          if (selectedOffset < -15 || selectedOffset > 15) {
+            state.drawHomeDate = todayMid;
+            renderDrawDateStrip();
+          }
+        }
+        renderAll();
+      }
+    });
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})(window);
