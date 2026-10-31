@@ -46,6 +46,8 @@
     <symbol id="i-restore" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.5-5.8"/><path d="M4 5v4h4"/></symbol>
     <symbol id="i-draw" viewBox="0 0 24 24"><path d="M4 20h4L19.5 8.5a2.1 2.1 0 0 0-3-3L5 17v3z"/></symbol>
     <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 10h17M8 2.5v4M16 2.5v4"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13"/></symbol>
 
     <symbol id="c-thought" viewBox="0 0 24 24"><path d="M4.5 11.5a4 4 0 0 1 4-4h7a4 4 0 0 1 0 8h-2.5l-3.5 3v-3h-1a4 4 0 0 1-4-4z"/></symbol>
     <symbol id="c-idea" viewBox="0 0 24 24"><path d="M12 4.5a5.5 5.5 0 0 0-3.3 9.9c.5.4.8.9.9 1.5l.1.6h4.6l.1-.6c.1-.6.4-1.1.9-1.5A5.5 5.5 0 0 0 12 4.5z"/><path d="M10 19h4"/><path d="M10.5 21.5h3"/></symbol>
@@ -298,7 +300,7 @@
 
     <!-- ================= APP MODE: DRAW ================= -->
     <section class="view" id="view-draw-home" data-view="draw-home" aria-label="Draw Home">
-      <header class="view-header view-header--title">
+      <header class="view-header view-header--title" style="padding-bottom: 0;">
         <div class="home-header-row">
           <button type="button" class="icon-btn" id="draw-sidebar-open" aria-label="Open menu">
             <svg class="ico ico-22" aria-hidden="true"><use href="#i-menu"/></svg>
@@ -309,39 +311,69 @@
           </div>
         </div>
         <p class="greeting-sub">What will you sketch?</p>
-        <div class="date-strip" id="draw-home-date-strip" role="tablist" aria-label="Filter by date"></div>
-      </header>
-      <div id="draw-home-list" class="list-root"></div>
-    </section>
-
-    <section class="view" id="view-draw-search" data-view="draw-search" aria-label="Search Drawings">
-      <header class="view-header view-header--search">
-        <div class="search-field">
-          <svg class="ico ico-20 search-ico" aria-hidden="true"><use href="#i-search"/></svg>
-          <input id="draw-search-input" type="text" placeholder="Search drawings" aria-label="Search drawings"
-                 autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search">
-          <button class="search-clear" id="draw-search-clear" type="button" aria-label="Clear search" hidden>
-            <svg class="ico ico-16" aria-hidden="true"><use href="#i-close"/></svg>
-          </button>
-        </div>
-        <div class="all-notes-bar">
+        <div class="date-strip" id="draw-home-date-strip" role="tablist" aria-label="Filter by date" style="margin-bottom: 12px;"></div>
+        
+        <!-- Draw Search/All Bar -->
+        <div class="draw-search-bar" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid transparent; transition: border-color .2s ease;">
           <button type="button" class="all-notes-label" id="draw-all-label">See all drawings</button>
+          <div class="search-field draw-search-field" style="height: 36px; flex: 0 1 180px; padding: 0 8px; border-radius: 10px;">
+            <svg class="ico ico-16 search-ico" aria-hidden="true" style="width: 14px; height: 14px;"><use href="#i-search"/></svg>
+            <input id="draw-search-input" type="text" placeholder="Search" aria-label="Search drawings"
+                   autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search" style="font-size: 15px;">
+            <button class="search-clear" id="draw-search-clear" type="button" aria-label="Clear search" hidden style="width: 20px; height: 20px;">
+              <svg class="ico ico-16" aria-hidden="true"><use href="#i-close"/></svg>
+            </button>
+          </div>
         </div>
       </header>
-      <div id="draw-search-list" class="list-root"></div>
+      <div id="draw-home-list" class="list-root" style="padding-top: 8px;"></div>
     </section>
 
-    <section class="view" id="view-draw-canvas" data-view="draw-canvas" aria-label="Canvas">
-      <header class="view-header view-header--title">
+    <!-- CANVAS VIEW -->
+    <section class="view" id="view-draw-canvas" data-view="draw-canvas" aria-label="Canvas" style="overflow: hidden;">
+      <header class="view-header view-header--title" style="padding-bottom: 10px;">
         <div class="header-row">
           <button type="button" class="icon-btn header-back" id="draw-canvas-back" aria-label="Back">
             <svg class="ico ico-22" aria-hidden="true"><use href="#i-back"/></svg>
           </button>
-          <h1 class="page-title header-title" id="draw-canvas-title">New Drawing</h1>
+          <input type="text" id="draw-canvas-title" class="draw-title-input" placeholder="Untitled Drawing" autocomplete="off">
+          <div class="header-actions">
+            <button type="button" class="text-btn" id="draw-canvas-save">Done</button>
+          </div>
         </div>
       </header>
-      <div class="canvas-placeholder">
-        <p>Canvas will be built in Stage 2.</p>
+      
+      <div class="canvas-wrapper">
+        <canvas id="drawing-canvas"></canvas>
+      </div>
+
+      <div class="draw-toolbar">
+        <button type="button" class="tool-btn is-active" id="tool-pen" aria-label="Pen">
+          <svg class="ico ico-20" aria-hidden="true"><use href="#i-draw"/></svg>
+        </button>
+        <button type="button" class="tool-btn" id="tool-eraser" aria-label="Eraser">
+          <svg class="ico ico-20" aria-hidden="true"><use href="#i-close"/></svg>
+        </button>
+        <div class="tool-sep"></div>
+        <div class="color-swatches" id="color-swatches">
+          <button type="button" class="color-swatch is-active" data-color="#000000" style="background:#000000" aria-label="Black"></button>
+          <button type="button" class="color-swatch" data-color="#ff3b30" style="background:#ff3b30" aria-label="Red"></button>
+          <button type="button" class="color-swatch" data-color="#007aff" style="background:#007aff" aria-label="Blue"></button>
+          <button type="button" class="color-swatch" data-color="#34c759" style="background:#34c759" aria-label="Green"></button>
+          <button type="button" class="color-swatch" data-color="#ffcc00" style="background:#ffcc00" aria-label="Yellow"></button>
+        </div>
+        <div class="tool-sep"></div>
+        <input type="range" id="tool-size" min="1" max="20" value="3" class="size-slider" aria-label="Stroke thickness">
+        <div class="tool-sep"></div>
+        <button type="button" class="tool-btn" id="tool-undo" aria-label="Undo">
+          <svg class="ico ico-20" aria-hidden="true"><use href="#i-undo"/></svg>
+        </button>
+        <button type="button" class="tool-btn" id="tool-redo" aria-label="Redo">
+          <svg class="ico ico-20" aria-hidden="true"><use href="#i-redo"/></svg>
+        </button>
+        <button type="button" class="tool-btn" id="tool-clear" aria-label="Clear All" style="color:var(--danger)">
+          <svg class="ico ico-20" aria-hidden="true"><use href="#i-trash"/></svg>
+        </button>
       </div>
     </section>
 
@@ -352,7 +384,7 @@
     <svg class="ico ico-26" aria-hidden="true"><use href="#i-plus"/></svg>
   </button>
   <button type="button" class="fab" id="draw-fab" aria-label="New drawing" hidden>
-    <svg class="ico ico-26" aria-hidden="true"><use href="#i-plus"/></svg>
+    <svg class="ico ico-26" aria-hidden="true"><use href="#i-draw"/></svg>
   </button>
 
   <!-- ================= NOTER TAB BAR ================= -->
@@ -368,19 +400,6 @@
     </button>
     <button type="button" class="tab" data-tab="more">
       <svg class="ico ico-22" aria-hidden="true"><use href="#i-more"/></svg><span>More</span>
-    </button>
-  </nav>
-
-  <!-- ================= DRAW TAB BAR ================= -->
-  <nav class="tabbar" id="draw-tabbar" aria-label="Draw navigation" hidden>
-    <button type="button" class="tab is-active" data-draw-tab="draw-home" aria-current="page">
-      <svg class="ico ico-22" aria-hidden="true"><use href="#i-home"/></svg><span>Home</span>
-    </button>
-    <button type="button" class="tab" data-draw-tab="draw-canvas">
-      <svg class="ico ico-22" aria-hidden="true"><use href="#i-draw"/></svg><span>Draw</span>
-    </button>
-    <button type="button" class="tab" data-draw-tab="draw-search">
-      <svg class="ico ico-22" aria-hidden="true"><use href="#i-search"/></svg><span>Search</span>
     </button>
   </nav>
 
