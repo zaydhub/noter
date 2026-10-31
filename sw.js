@@ -1,10 +1,8 @@
 /* ============================================================
    Noter — service worker
-   Cache-first for all app assets. Nothing here touches the
-   network for normal operation.
    ============================================================ */
 
-const CACHE = 'noter-v2';
+const CACHE = 'noter-v3';
 
 const ASSETS = [
   './',
