@@ -22,6 +22,9 @@
     tabs:           $$('.tab'),
     fab:            $('#fab'),
     greetingTitle:  $('#greeting-title'),
+    sidebarOverlay: $('#sidebar-overlay'),
+    sidebarItems:   $$('.sidebar-item'),
+    sidebarOpen:    $('#sidebar-open'),
     greetingSub:    $('#greeting-sub'),
     homeDate:       $('#home-date'),
     homeDateStrip:  $('#home-date-strip'),
@@ -1424,6 +1427,10 @@
      ========================================================== */
 
   function handleBack() {
+    if (!el.sidebarOverlay.hidden) {
+  el.sidebarOverlay.hidden = true;
+  return true;
+}
     if (!el.savePromptBackdrop.hidden) {
       cancelSavePrompt();
       return true;
@@ -1935,6 +1942,21 @@
      ========================================================== */
 
   function wireEvents() {
+    if (el.sidebarOpen) {
+  el.sidebarOpen.addEventListener('click', () => { el.sidebarOverlay.hidden = false; });
+}
+el.sidebarOverlay.addEventListener('click', (e) => {
+  if (e.target === el.sidebarOverlay) el.sidebarOverlay.hidden = true;
+});
+el.sidebarItems.forEach(item => {
+  item.addEventListener('click', () => {
+    el.sidebarOverlay.hidden = true;
+    const mode = item.dataset.appMode;
+    if (mode === 'draw') showToast('Draw coming in Stage 3');
+    else if (mode === 'calendar') showToast('Calendar coming in Stage 5');
+    else showToast('Already in Noter');
+  });
+});
     el.tabbar.addEventListener('click', (e) => {
       const tab = e.target.closest('.tab');
       if (!tab) return;
