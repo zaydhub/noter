@@ -27,12 +27,12 @@
       updatedAt: Number.isFinite(n.updatedAt) ? n.updatedAt : now,
       pinned: n.pinned === true,
       favorite: n.favorite === true,
-      deletedAt: Number.isFinite(n.deletedAt) ? n.deletedAt : null,
-      type: n.type === 'drawing' ? 'drawing' : 'text'
+      deletedAt: Number.isFinite(n.deletedAt) ? n.deletedAt : null
     };
   }
 
   const NotesStore = {
+    /* Every note, live + trashed. */
     notes: [],
     ready: false,
     TRASH_TTL_MS,
@@ -44,16 +44,10 @@
       return this.notes;
     },
 
+    /* ---- Live vs trashed slices ---- */
+
     live() {
       return this.notes.filter((n) => !n.deletedAt);
-    },
-
-    liveText() {
-      return this.live().filter((n) => n.type === 'text');
-    },
-
-    liveDrawings() {
-      return this.live().filter((n) => n.type === 'drawing');
     },
 
     trashed() {
@@ -68,9 +62,13 @@
       return count;
     },
 
+    /* ---- Reads ---- */
+
     get(id) {
       return this.notes.find((n) => n.id === id) || null;
     },
+
+    /* ---- Writes ---- */
 
     async upsert(note) {
       const normalized = normalize(note);
@@ -81,7 +79,7 @@
       return normalized;
     },
 
-    createDraft(categoryId, type) {
+    createDraft(categoryId) {
       const now = Date.now();
       return {
         id: uuid(),
@@ -92,11 +90,11 @@
         updatedAt: now,
         pinned: false,
         favorite: false,
-        deletedAt: null,
-        type: type === 'drawing' ? 'drawing' : 'text'
+        deletedAt: null
       };
     },
 
+    /* Hard delete — used for empty drafts. */
     async remove(id) {
       const index = this.notes.findIndex((n) => n.id === id);
       if (index === -1) return null;
@@ -105,6 +103,7 @@
       return removed;
     },
 
+    /* Soft delete — moves a note to Trash. */
     async softDelete(id) {
       const note = this.get(id);
       if (!note) return null;
@@ -113,6 +112,7 @@
       return note;
     },
 
+    /* Restore a trashed note. */
     async restore(id) {
       const note = this.get(id);
       if (!note || !note.deletedAt) return null;
@@ -121,12 +121,14 @@
       return note;
     },
 
+    /* Permanently remove a trashed note. */
     async purge(id) {
       const note = this.get(id);
       if (!note) return null;
       return this.remove(id);
     },
 
+    /* Empty the whole trash. */
     async emptyTrash() {
       const ids = this.notes.filter((n) => n.deletedAt).map((n) => n.id);
       if (!ids.length) return 0;
@@ -136,6 +138,7 @@
       return ids.length;
     },
 
+    /* Auto-purge items older than 30 days. Called once on boot. */
     async purgeExpired() {
       const cutoff = Date.now() - TRASH_TTL_MS;
       const expired = this.notes.filter((n) => n.deletedAt && n.deletedAt < cutoff);
@@ -146,12 +149,14 @@
       return expired.length;
     },
 
+    /* ---- Filters / sorting (only live notes) ---- */
+
     isBlank(note) {
       return !note || (!note.title.trim() && !note.content.trim());
     },
 
     sorted(list) {
-      const source = list || this.liveText();
+      const source = list || this.live();
       return source.slice().sort((a, b) => {
         if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
         return b.updatedAt - a.updatedAt;
@@ -159,16 +164,16 @@
     },
 
     favorites() {
-      return this.sorted(this.liveText().filter((n) => n.favorite));
+      return this.sorted(this.live().filter((n) => n.favorite));
     },
 
     byCategory(categoryId) {
-      return this.sorted(this.liveText().filter((n) => n.category === categoryId));
+      return this.sorted(this.live().filter((n) => n.category === categoryId));
     },
 
     countsByCategory() {
       const map = Object.create(null);
-      for (const n of this.liveText()) {
+      for (const n of this.live()) {
         map[n.category] = (map[n.category] || 0) + 1;
       }
       return map;
@@ -190,9 +195,6 @@
     displayTitle(note) {
       const t = (note.title || '').trim();
       if (t) return t;
-      if (note.type === 'drawing') {
-        return 'Untitled Drawing';
-      }
       const firstLine = (note.content || '')
         .split('\n')
         .map((l) => l.trim())
@@ -200,6 +202,7 @@
       return firstLine || '';
     },
 
+    /* Days remaining before auto-purge. Returns 0..30. */
     daysLeft(note) {
       if (!note || !note.deletedAt) return 0;
       const elapsed = Date.now() - note.deletedAt;
