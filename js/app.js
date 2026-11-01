@@ -483,10 +483,8 @@
   function renderHome() {
     const dayStart = state.homeDate != null ? state.homeDate : startOfDay(Date.now());
     const dayEnd = dayStart + DAY;
-
     const todays = NotesStore.liveText().filter((n) => n.updatedAt >= dayStart && n.updatedAt < dayEnd);
     const sorted = NotesStore.sorted(todays);
-
     renderGrouped(el.homeList, sorted, emptyStateHtml('i-home', 'No notes for this day', 'Tap + to start writing something.'));
   }
 
@@ -670,8 +668,7 @@
     state.catDetail = null;
     renderCategoriesView();
   }
-
-  /* ==========================================================
+     /* ==========================================================
      Category actions sheet
      ========================================================== */
 
@@ -1095,7 +1092,6 @@
     } else if (name === 'draw-home') {
       renderDrawHome();
       renderDrawDateStrip();
-      setupCanvas();
     }
   }
 
@@ -1236,6 +1232,7 @@
     state.sheetNoteId = null;
     resetSheetStyles(el.sheetBackdrop);
   }
+
   /* ==========================================================
      Save prompt
      ========================================================== */
@@ -1554,6 +1551,95 @@
 
     state.canvas = canvas;
     state.ctx = ctx;
+    state.undoStack = [];
+    state.redoStack = [];
+    saveCanvasState();
+  }
+
+  function saveCanvasState() {
+    if (!state.canvas) return;
+    state.undoStack.push(state.canvas.toDataURL());
+    if (state.undoStack.length > 20) state.undoStack.shift();
+    state.redoStack = [];
+    updateUndoRedoButtons();
+  }
+
+  function updateUndoRedoButtons() {
+    if (el.toolUndo) el.toolUndo.style.opacity = state.undoStack.length > 1 ? '1' : '0.35';
+    if (el.toolRedo) el.toolRedo.style.opacity = state.redoStack.length > 0 ? '1' : '0.35';
+  }
+
+  function loadCanvasImage(dataUrl) {
+    if (!state.ctx || !state.canvas) return;
+    const img = new Image();
+    img.onload = () => {
+      const rect = state.canvas.parentElement.getBoundingClientRect();
+      state.ctx.clearRect(0, 0, rect.width, rect.height);
+      state.ctx.drawImage(img, 0, 0, rect.width, rect.height);
+    };
+    img.src = dataUrl;
+  }
+
+  function openCanvas(id) {
+    if (state.view === 'draw-canvas') return;
+    
+    let note;
+    if (id) {
+      note = NotesStore.get(id);
+      if (!note || note.deletedAt || note.type !== 'drawing') return;
+      state.canvasNoteId = id;
+      el.drawCanvasTitle.value = note.title;
+    } else {
+      note = NotesStore.createDraft('other', 'drawing');
+      state.canvasNoteId = null;
+      el.drawCanvasTitle.value = '';
+    }
+    
+    switchView('draw-canvas');
+    state.canvasDirty = false;
+    closeSubToolbar();
+
+    setTimeout(() => {
+      setupCanvas();
+      if (id && note.content) {
+        loadCanvasImage(note.content);
+      }
+    }, 50);
+  }
+
+  async function closeCanvas() {
+    if (!state.canvasNoteId && !state.canvasDirty) {
+      switchView('draw-home');
+      return;
+    }
+
+    const title = el.drawCanvasTitle.value.trim();
+    const dataUrl = state.canvas.toDataURL('image/png');
+    
+    const isBlank = state.canvas.toDataURL() === document.createElement('canvas').toDataURL();
+
+    if (!title && isBlank && !state.canvasNoteId) {
+       switchView('draw-home');
+       return;
+    }
+
+    let note;
+    if (state.canvasNoteId) {
+      note = NotesStore.get(state.canvasNoteId);
+    } else {
+      note = NotesStore.createDraft('other', 'drawing');
+    }
+
+    note.title = title;
+    note.content = dataUrl;
+    note.updatedAt = Date.now();
+    note.deletedAt = null;
+
+    await NotesStore.upsert(note);
+    state.canvasDirty = false;
+    switchView('draw-home');
+    renderDrawHome();
+    showToast('Drawing saved');
   }
 
   function setupCanvasEvents() {
@@ -1595,6 +1681,7 @@
       
       lastX = pos.x;
       lastY = pos.y;
+      state.canvasDirty = true;
     }
 
     function stopDrawing(e) {
@@ -1602,9 +1689,9 @@
       e.preventDefault();
       state.isDrawing = false;
       state.ctx.closePath();
+      saveCanvasState();
     }
 
-    // Use pointer events (works for both touch and mouse)
     canvas.addEventListener('pointerdown', startDrawing);
     canvas.addEventListener('pointermove', draw);
     canvas.addEventListener('pointerup', stopDrawing);
@@ -1628,6 +1715,11 @@
 
     if (state.editor) {
       requestEditorClose();
+      return true;
+    }
+
+    if (state.view === 'draw-canvas') {
+      closeCanvas();
       return true;
     }
 
@@ -2191,26 +2283,34 @@
 
     // FABs
     el.fab.addEventListener('click', () => openEditor(null));
-    el.drawFab.addEventListener('click', () => switchView('draw-canvas'));
+    el.drawFab.addEventListener('click', () => openCanvas(null));
 
     // Canvas Buttons
-    el.drawCanvasBack.addEventListener('click', () => {
-      closeSubToolbar();
-      switchView('draw-home');
-    });
+    el.drawCanvasBack.addEventListener('click', closeCanvas);
+    el.drawCanvasSave.addEventListener('click', closeCanvas);
     
     el.toolPen.addEventListener('click', () => {
       state.currentTool = 'pen';
       el.toolPen.classList.add('is-active');
       el.toolEraser.classList.remove('is-active');
-      el.drawSubToolbar.classList.toggle('is-open');
+      
+      if (el.drawSubToolbar.classList.contains('is-open')) {
+        closeSubToolbar();
+      } else {
+        el.drawSubToolbar.classList.add('is-open');
+      }
     });
 
     el.toolEraser.addEventListener('click', () => {
       state.currentTool = 'eraser';
       el.toolEraser.classList.add('is-active');
       el.toolPen.classList.remove('is-active');
-      el.drawSubToolbar.classList.toggle('is-open');
+      
+      if (el.drawSubToolbar.classList.contains('is-open')) {
+        closeSubToolbar();
+      } else {
+        el.drawSubToolbar.classList.add('is-open');
+      }
     });
 
     el.colorSwatches.addEventListener('click', (e) => {
@@ -2237,6 +2337,53 @@
 
     el.drawingCanvas.addEventListener('pointerdown', () => {
       if (el.drawSubToolbar.classList.contains('is-open')) closeSubToolbar();
+    });
+
+    el.toolUndo.addEventListener('click', () => {
+      if (state.undoStack.length <= 1) return;
+      const currentState = state.undoStack.pop();
+      state.redoStack.push(currentState);
+      
+      const prevState = state.undoStack[state.undoStack.length - 1];
+      const img = new Image();
+      img.onload = () => {
+        const rect = state.canvas.parentElement.getBoundingClientRect();
+        state.ctx.clearRect(0, 0, rect.width, rect.height);
+        state.ctx.drawImage(img, 0, 0, rect.width, rect.height);
+      };
+      img.src = prevState;
+      updateUndoRedoButtons();
+    });
+
+    el.toolRedo.addEventListener('click', () => {
+      if (state.redoStack.length === 0) return;
+      const nextState = state.redoStack.pop();
+      state.undoStack.push(nextState);
+      
+      const img = new Image();
+      img.onload = () => {
+        const rect = state.canvas.parentElement.getBoundingClientRect();
+        state.ctx.clearRect(0, 0, rect.width, rect.height);
+        state.ctx.drawImage(img, 0, 0, rect.width, rect.height);
+      };
+      img.src = nextState;
+      updateUndoRedoButtons();
+    });
+
+    el.toolClear.addEventListener('click', () => {
+      requestConfirm({
+        title: 'Clear canvas?',
+        message: 'This will erase everything.',
+        confirmLabel: 'Clear',
+        destructive: true,
+        onConfirm: () => {
+          const rect = state.canvas.parentElement.getBoundingClientRect();
+          state.ctx.fillStyle = '#ffffff';
+          state.ctx.fillRect(0, 0, rect.width, rect.height);
+          saveCanvasState();
+          state.canvasDirty = true;
+        }
+      });
     });
 
     // Note lists
@@ -2566,8 +2713,8 @@
       if (state.catSheetId) { closeCategoryActions(); return; }
       if (state.trashSheetNoteId) { closeTrashSheet(); return; }
       if (!el.sortSheetBackdrop.hidden) { closeSortSheet(); return; }
-      if (state.subToolbarOpenFor) { closeSubToolbar(); return; }
-      if (state.view === 'draw-canvas') { switchView('draw-home'); return; }
+      if (el.drawSubToolbar.classList.contains('is-open')) { closeSubToolbar(); return; }
+      if (state.view === 'draw-canvas') { closeCanvas(); return; }
       if (state.editor) { requestEditorClose(); return; }
       if (!el.dialogBackdrop.hidden) { closeConfirm(); return; }
       if (!el.sheetBackdrop.hidden) { closeSheet(); return; }
