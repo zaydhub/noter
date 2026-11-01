@@ -1401,3 +1401,63 @@ html[data-theme="dark"] .toast { background: rgba(58,58,60,.97); border: 1px sol
     transition-duration: .001ms !important;
   }
 }
+
+/* ============================================================
+   SIDEBAR (Frosted Glass Style)
+   ============================================================ */
+
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0,0,0,.4);
+  animation: fadeIn .2s ease;
+}
+.sidebar-overlay[hidden] { display: none; }
+
+.sidebar {
+  width: 280px; 
+  height: calc(100% - 24px); 
+  margin: 12px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+  -webkit-backdrop-filter: blur(34px) saturate(180%);
+  backdrop-filter: blur(34px) saturate(180%);
+  display: flex;
+  flex-direction: column;
+  animation: slideIn .3s var(--ease);
+}
+html[data-theme="dark"] .sidebar {
+  background: rgba(28, 28, 30, 0.75);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+@keyframes slideIn { from { transform: translateX(-110%); } to { transform: none; } }
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 24px 20px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-title { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+
+.sidebar-menu { padding: 12px 10px; display: flex; flex-direction: column; gap: 4px; }
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text);
+  transition: background .14s ease;
+  text-align: left;
+}
+.sidebar-item:active { background: var(--surface-press); }
+.sidebar-item.is-active { background: var(--surface-2); font-weight: 600; }
+.sidebar-item .ico { color: var(--text-2); }
+.sidebar-item.is-active .ico { color: var(--accent); }
