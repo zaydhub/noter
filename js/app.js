@@ -22,21 +22,45 @@
     tabs:           $$('.tab'),
     fab:            $('#fab'),
     drawFab:        $('#draw-fab'),
-    drawHomeList:   $('#draw-home-list'),
-    drawHomeDate:   $('#draw-home-date'),
-    drawHomeDateStrip: $('#draw-home-date-strip'),
-    greetingTitle:  $('#greeting-title'),
+
     sidebarOverlay: $('#sidebar-overlay'),
     sidebarItems:   $$('.sidebar-item'),
     sidebarOpen:    $('#sidebar-open'),
+    drawSidebarOpen:$('#draw-sidebar-open'),
+
+    greetingTitle:  $('#greeting-title'),
     greetingSub:    $('#greeting-sub'),
     homeDate:       $('#home-date'),
     homeDateStrip:  $('#home-date-strip'),
     homeList:       $('#home-list'),
+
+    drawHomeDate:   $('#draw-home-date'),
+    drawHomeDateStrip: $('#draw-home-date-strip'),
+    drawHomeList:   $('#draw-home-list'),
+    
+    drawSearchInput: $('#draw-search-input'),
+    drawSearchClear: $('#draw-search-clear'),
+    drawAllLabel:    $('#draw-all-label'),
+
+    drawCanvasBack:  $('#draw-canvas-back'),
+    drawCanvasTitle: $('#draw-canvas-title'),
+    drawCanvasSave:  $('#draw-canvas-save'),
+    drawingCanvas:   $('#drawing-canvas'),
+    drawSubToolbar:  $('#draw-sub-toolbar'),
+    penColorIndicator: $('#pen-color-indicator'),
+
+    toolPen:         $('#tool-pen'),
+    toolEraser:      $('#tool-eraser'),
+    colorSwatches:   $('#color-swatches'),
+    sizeOptions:     $('#size-options'),
+    toolUndo:        $('#tool-undo'),
+    toolRedo:        $('#tool-redo'),
+    toolClear:       $('#tool-clear'),
+
     searchList:     $('#search-list'),
     searchInput:    $('#search-input'),
     searchClear:    $('#search-clear'),
-    searchHeader:   $('.view-header--search'),
+    searchHeader:   $('#view-search .view-header--search'),
     allNotesLabel:  $('#all-notes-label'),
     allNotesSort:   $('#all-notes-sort'),
     allNotesSortLabel: $('#all-notes-sort-label'),
@@ -121,18 +145,8 @@
     importFile:     $('#import-file')
   };
 
-  const SORT_LABELS = {
-    newest: 'Newest',
-    oldest: 'Oldest',
-    az: 'A–Z',
-    za: 'Z–A'
-  };
-
-  const THEME_LABELS = {
-    light: 'Light',
-    dark: 'Dark',
-    system: 'System'
-  };
+  const SORT_LABELS = { newest: 'Newest', oldest: 'Oldest', az: 'A–Z', za: 'Z–A' };
+  const THEME_LABELS = { light: 'Light', dark: 'Dark', system: 'System' };
 
   const state = {
     appMode: 'noter',
@@ -153,10 +167,25 @@
 
     homeDate: null,
     homeDateInitialized: false,
+    drawHomeDate: null,
+    drawHomeDateInitialized: false,
 
     searchExpanded: false,
+    drawSearchExpanded: false,
 
-    moreSub: 'main'
+    moreSub: 'main',
+
+    // Canvas state
+    canvas: null,
+    ctx: null,
+    isDrawing: false,
+    currentTool: 'pen',
+    currentColor: '#000000',
+    currentSize: 2,
+    canvasNoteId: null,
+    canvasDirty: false,
+    undoStack: [],
+    redoStack: []
   };
 
   /* ==========================================================
@@ -164,12 +193,7 @@
      ========================================================== */
 
   function escapeHtml(str) {
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   function startOfDay(ts) {
@@ -215,9 +239,7 @@
   }
 
   function longDate(ts) {
-    return new Date(ts).toLocaleDateString(undefined, {
-      weekday: 'long', month: 'long', day: 'numeric'
-    });
+    return new Date(ts).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
   }
 
   function shortWeekday(ts) {
@@ -234,6 +256,7 @@
     el.greetingTitle.textContent = greeting + ', Zayd';
     el.greetingSub.textContent = 'What’s on your mind?';
     if (el.homeDate) el.homeDate.textContent = longDate(Date.now());
+    if (el.drawHomeDate) el.drawHomeDate.textContent = longDate(Date.now());
   }
 
   function syncStatusBar() {
@@ -256,18 +279,13 @@
   }
 
   /* ==========================================================
-     Home date strip
+     Date strips
      ========================================================== */
 
-  function renderDateStrip() {
-    if (!el.homeDateStrip) return;
-
+  function buildDateStrip(stripEl, selectedTs) {
+    if (!stripEl) return;
     const todayMid = startOfDay(Date.now());
-    if (!state.homeDateInitialized) {
-      state.homeDate = todayMid;
-      state.homeDateInitialized = true;
-    }
-    if (state.homeDate === null) state.homeDate = todayMid;
+    if (selectedTs === null) selectedTs = todayMid;
 
     const ref = new Date(todayMid);
     const year = ref.getFullYear();
@@ -277,7 +295,7 @@
 
     let html = '';
     for (let ts = firstMid; ts <= lastMid; ts += DAY) {
-      const isSelected = ts === state.homeDate;
+      const isSelected = ts === selectedTs;
       const classes = 'date-chip' + (isSelected ? ' is-selected' : '');
       html += (
         '<button type="button" class="' + classes + '" data-day="' + ts + '" ' +
@@ -287,18 +305,33 @@
         '</button>'
       );
     }
-    el.homeDateStrip.innerHTML = html;
+    stripEl.innerHTML = html;
 
     requestAnimationFrame(() => {
-      if (!el.homeDateStrip) return;
-      const target = el.homeDateStrip.querySelector('.date-chip.is-selected');
+      if (!stripEl) return;
+      const target = stripEl.querySelector('.date-chip.is-selected');
       if (!target) return;
-      const strip = el.homeDateStrip;
       const targetCenter = target.offsetLeft + target.offsetWidth / 2;
-      const stripHalf = strip.clientWidth / 2;
+      const stripHalf = stripEl.clientWidth / 2;
       const nextLeft = Math.max(0, targetCenter - stripHalf);
-      strip.scrollTo({ left: nextLeft, behavior: 'auto' });
+      stripEl.scrollTo({ left: nextLeft, behavior: 'auto' });
     });
+  }
+
+  function renderNoterDateStrip() {
+    if (!state.homeDateInitialized) {
+      state.homeDate = startOfDay(Date.now());
+      state.homeDateInitialized = true;
+    }
+    buildDateStrip(el.homeDateStrip, state.homeDate);
+  }
+
+  function renderDrawDateStrip() {
+    if (!state.drawHomeDateInitialized) {
+      state.drawHomeDate = startOfDay(Date.now());
+      state.drawHomeDateInitialized = true;
+    }
+    buildDateStrip(el.drawHomeDateStrip, state.drawHomeDate);
   }
 
   /* ==========================================================
@@ -307,14 +340,8 @@
 
   function noteFlagsHtml(note) {
     let html = '';
-    if (note.pinned) {
-      html += '<svg class="note-flag note-flag--pin" viewBox="0 0 24 24" aria-hidden="true">' +
-              '<use href="#i-pin"/></svg>';
-    }
-    if (note.favorite) {
-      html += '<svg class="note-flag note-flag--fav" viewBox="0 0 24 24" aria-hidden="true">' +
-              '<use href="#i-star"/></svg>';
-    }
+    if (note.pinned) html += '<svg class="note-flag note-flag--pin" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-pin"/></svg>';
+    if (note.favorite) html += '<svg class="note-flag note-flag--fav" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-star"/></svg>';
     return html;
   }
 
@@ -328,12 +355,17 @@
     const time = escapeHtml(formatTime(note.updatedAt));
     const day = escapeHtml(formatDay(note.updatedAt));
 
+    let iconHtml = '';
+    if (note.type === 'drawing') {
+       iconHtml = '<span class="note-icon" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24"><use href="#i-draw"/></svg></span>';
+    } else {
+       iconHtml = '<span class="note-icon" aria-hidden="true"><svg class="ico"><use href="#' + escapeHtml(cat.icon) + '"/></svg></span>';
+    }
+
     return (
       '<li class="note-item" data-id="' + escapeHtml(note.id) + '">' +
         '<div class="note-face" role="button" tabindex="0" aria-label="' + escapeHtml(aria) + '">' +
-          '<span class="note-icon" aria-hidden="true">' +
-            '<svg class="ico"><use href="#' + escapeHtml(cat.icon) + '"/></svg>' +
-          '</span>' +
+          iconHtml +
           '<span class="note-main">' +
             '<span class="note-title-row">' +
               '<span class="' + titleClass + '">' + titleText + '</span>' +
@@ -358,12 +390,17 @@
     const daysText = days === 1 ? 'Deletes in 1 day' : ('Deletes in ' + days + ' days');
     const aria = (title ? title : 'Empty note') + '. ' + daysText;
 
+    let iconHtml = '';
+    if (note.type === 'drawing') {
+       iconHtml = '<span class="note-icon" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24"><use href="#i-draw"/></svg></span>';
+    } else {
+       iconHtml = '<span class="note-icon" aria-hidden="true"><svg class="ico"><use href="#' + escapeHtml(cat.icon) + '"/></svg></span>';
+    }
+
     return (
       '<li class="note-item trash-item" data-id="' + escapeHtml(note.id) + '">' +
         '<div class="note-face" role="button" tabindex="0" aria-label="' + escapeHtml(aria) + '">' +
-          '<span class="note-icon" aria-hidden="true">' +
-            '<svg class="ico"><use href="#' + escapeHtml(cat.icon) + '"/></svg>' +
-          '</span>' +
+          iconHtml +
           '<span class="note-main">' +
             '<span class="note-title-row">' +
               '<span class="' + titleClass + '">' + titleText + '</span>' +
@@ -427,7 +464,6 @@
 
     copy.sort((a, b) => {
       if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-
       if (mode === 'az' || mode === 'za') {
         const at = (NotesStore.displayTitle(a) || '').toLowerCase();
         const bt = (NotesStore.displayTitle(b) || '').toLowerCase();
@@ -448,24 +484,55 @@
     const dayStart = state.homeDate != null ? state.homeDate : startOfDay(Date.now());
     const dayEnd = dayStart + DAY;
 
-    const todays = NotesStore.live().filter((n) => {
-      return n.updatedAt >= dayStart && n.updatedAt < dayEnd;
-    });
-
+    const todays = NotesStore.liveText().filter((n) => n.updatedAt >= dayStart && n.updatedAt < dayEnd);
     const sorted = NotesStore.sorted(todays);
 
-    renderGrouped(
-      el.homeList,
-      sorted,
-      emptyStateHtml('i-home', 'No notes for this day', 'Tap + to start writing something.')
-    );
+    renderGrouped(el.homeList, sorted, emptyStateHtml('i-home', 'No notes for this day', 'Tap + to start writing something.'));
+  }
+
+  function renderDrawHome() {
+    const query = el.drawSearchInput.value.trim();
+    const hasQuery = !!query;
+
+    if (hasQuery) {
+      el.drawAllLabel.textContent = 'Results';
+    } else if (state.drawSearchExpanded) {
+      el.drawAllLabel.textContent = 'All drawings';
+    } else {
+      el.drawAllLabel.textContent = 'See all drawings';
+    }
+
+    let source;
+    if (hasQuery) {
+      const results = Search.run(query, NotesStore.liveDrawings());
+      if (!results.length) {
+        el.drawHomeList.innerHTML = emptyStateHtml('i-search', 'No drawings found', 'Try a different name.');
+        return;
+      }
+      source = applySort(results);
+    } else if (state.drawSearchExpanded) {
+      source = applySort(NotesStore.liveDrawings());
+      if (!source.length) {
+        el.drawHomeList.innerHTML = emptyStateHtml('i-draw', 'No drawings yet', 'Tap + to start drawing.');
+        return;
+      }
+    } else {
+      const dayStart = state.drawHomeDate != null ? state.drawHomeDate : startOfDay(Date.now());
+      const dayEnd = dayStart + DAY;
+      source = NotesStore.liveDrawings().filter(n => n.updatedAt >= dayStart && n.updatedAt < dayEnd);
+      source = NotesStore.sorted(source);
+      if (!source.length) {
+        el.drawHomeList.innerHTML = emptyStateHtml('i-draw', 'No drawings for this day', 'Tap + to start drawing.');
+        return;
+      }
+    }
+    renderGrouped(el.drawHomeList, source, '');
   }
 
   function renderSearch() {
     const query = el.searchInput.value;
     const hasQuery = !!query.trim();
     el.searchClear.hidden = !query;
-
     const sortLabel = SORT_LABELS[Settings.getSort()] || 'Newest';
     el.allNotesSortLabel.textContent = sortLabel;
 
@@ -481,11 +548,9 @@
     }
 
     if (hasQuery) {
-      const results = Search.run(query, NotesStore.live());
+      const results = Search.run(query, NotesStore.liveText());
       if (!results.length) {
-        el.searchList.innerHTML = emptyStateHtml(
-          'i-search', 'No notes found', 'Try a different word or check the spelling.'
-        );
+        el.searchList.innerHTML = emptyStateHtml('i-search', 'No notes found', 'Try a different word or check the spelling.');
         return;
       }
       renderFlat(el.searchList, applySort(results), '');
@@ -493,17 +558,13 @@
     }
 
     if (!state.searchExpanded) {
-      el.searchList.innerHTML = emptyStateHtml(
-        'i-search', 'Search your notes', 'Find notes by title, content, or category.'
-      );
+      el.searchList.innerHTML = emptyStateHtml('i-search', 'Search your notes', 'Find notes by title, content, or category.');
       return;
     }
 
-    const all = applySort(NotesStore.live());
+    const all = applySort(NotesStore.liveText());
     if (!all.length) {
-      el.searchList.innerHTML = emptyStateHtml(
-        'i-search', 'No notes yet', 'Tap + to start writing something.'
-      );
+      el.searchList.innerHTML = emptyStateHtml('i-search', 'No notes yet', 'Tap + to start writing something.');
       return;
     }
     renderFlat(el.searchList, all, '');
@@ -524,18 +585,12 @@
       el.catTitle.textContent = detail.name;
       el.catHeaderActions.hidden = true;
 
-      const notes = detail.id === 'favorites'
-        ? NotesStore.favorites()
-        : NotesStore.byCategory(detail.id);
+      const notes = detail.id === 'favorites' ? NotesStore.favorites() : NotesStore.byCategory(detail.id);
 
       if (detail.id === 'favorites') {
-        renderFlat(el.catContent, notes,
-          emptyStateHtml('i-star', 'No favorite notes yet',
-            'Tap the star on a note to save it here.'));
+        renderFlat(el.catContent, notes, emptyStateHtml('i-star', 'No favorite notes yet', 'Tap the star on a note to save it here.'));
       } else {
-        renderFlat(el.catContent, notes,
-          emptyStateHtml('i-categories', 'No notes in ' + detail.name,
-            'Notes assigned to this category will show up here.'));
+        renderFlat(el.catContent, notes, emptyStateHtml('i-categories', 'No notes in ' + detail.name, 'Notes assigned to this category will show up here.'));
       }
       return;
     }
@@ -547,17 +602,13 @@
     const toggleIcon = view === 'grid' ? 'i-list' : 'i-grid';
     const toggleLabel = view === 'grid' ? 'Switch to list view' : 'Switch to grid view';
     el.catViewToggle.setAttribute('aria-label', toggleLabel);
-    el.catViewToggle.innerHTML =
-      '<svg class="ico ico-20" aria-hidden="true"><use href="#' + toggleIcon + '"/></svg>';
+    el.catViewToggle.innerHTML = '<svg class="ico ico-20" aria-hidden="true"><use href="#' + toggleIcon + '"/></svg>';
 
     const cats = Settings.getCategories();
     let html = '';
 
-    html +=
-      '<button type="button" class="fav-entry" id="cat-favorites" aria-label="Open favorites">' +
-        '<span class="fav-entry-icon" aria-hidden="true">' +
-          '<svg class="ico"><use href="#i-star"/></svg>' +
-        '</span>' +
+    html += '<button type="button" class="fav-entry" id="cat-favorites" aria-label="Open favorites">' +
+        '<span class="fav-entry-icon" aria-hidden="true"><svg class="ico"><use href="#i-star"/></svg></span>' +
         '<span class="fav-entry-label">Favorites</span>' +
         '<span class="fav-entry-count">' + favoritesCount + '</span>' +
         '<svg class="ico ico-18 row-chev" aria-hidden="true"><use href="#i-chevron"/></svg>' +
@@ -971,72 +1022,82 @@
   }
 
   /* ==========================================================
-     Navigation
+     App Mode Switcher
      ========================================================== */
 
   function switchAppMode(mode) {
-  if (state.appMode === mode) return;
-  state.appMode = mode;
+    if (state.appMode === mode) return;
+    state.appMode = mode;
 
-  el.sidebarItems.forEach(item => {
-    item.classList.toggle('is-active', item.dataset.appMode === mode);
-  });
+    // Update sidebar UI
+    el.sidebarItems.forEach(item => {
+      item.classList.toggle('is-active', item.dataset.appMode === mode);
+    });
+    el.sidebarOverlay.hidden = true;
 
-  if (mode === 'noter') {
-    switchView('home');
-    el.tabbar.hidden = false;
-    el.fab.classList.remove('is-hidden');
-    el.drawFab.classList.add('is-hidden');
-  } else if (mode === 'draw') {
-    switchView('draw-home');
-    el.tabbar.hidden = true;
-    el.fab.classList.add('is-hidden');
-    el.drawFab.classList.remove('is-hidden');
-  } else if (mode === 'calendar') {
-    el.tabbar.hidden = true;
-    el.fab.classList.add('is-hidden');
-    el.drawFab.classList.add('is-hidden');
-    showToast('Calendar coming in Stage 5');
-    switchAppMode('noter'); // Revert for now
-  }
-}
-
-function switchView(name) {
-  if (state.view === name) return;
-  state.view = name;
-
-  for (const v of el.views) v.classList.toggle('is-active', v.dataset.view === name);
-  
-  // Noter Tabs
-  for (const tab of el.tabs) {
-    const active = tab.dataset.tab === name;
-    tab.classList.toggle('is-active', active);
-    if (active) tab.setAttribute('aria-current', 'page');
-    else tab.removeAttribute('aria-current');
+    if (mode === 'noter') {
+      switchView('home');
+      el.tabbar.hidden = false;
+      el.fab.classList.remove('is-hidden');
+      el.drawFab.classList.add('is-hidden');
+    } else if (mode === 'draw') {
+      switchView('draw-home');
+      el.tabbar.hidden = true;
+      el.fab.classList.add('is-hidden');
+      el.drawFab.classList.remove('is-hidden');
+    } else if (mode === 'calendar') {
+      el.tabbar.hidden = true;
+      el.fab.classList.add('is-hidden');
+      el.drawFab.classList.add('is-hidden');
+      showToast('Calendar coming in Stage 5');
+      switchAppMode('noter');
+    }
   }
 
-  if (name !== 'search' && document.activeElement === el.searchInput) el.searchInput.blur();
-  
-  // FAB logic based on app mode
-  if (state.appMode === 'noter') {
-    el.fab.classList.toggle('is-hidden', name === 'more' || name === 'categories');
-  } else if (state.appMode === 'draw') {
-    el.drawFab.classList.toggle('is-hidden', name !== 'draw-home');
-  }
+  /* ==========================================================
+     Navigation
+     ========================================================== */
 
-  if (name === 'categories') {
-    state.catDetail = null;
-    renderCategoriesView();
-  } else if (name === 'more') {
-    closeMoreSub();
-    updateMoreValues();
-  } else if (name === 'search') {
-    renderSearch();
-  } else if (name === 'draw-home') {
-    renderDrawHome();
-    renderDrawDateStrip();
+  function switchView(name) {
+    if (state.view === name) return;
+    state.view = name;
+
+    for (const v of el.views) v.classList.toggle('is-active', v.dataset.view === name);
+    
+    // Noter Tabs
+    for (const tab of $$('#tabbar .tab')) {
+      const active = tab.dataset.tab === name;
+      tab.classList.toggle('is-active', active);
+      if (active) tab.setAttribute('aria-current', 'page');
+      else tab.removeAttribute('aria-current');
+    }
+
+    if (name !== 'search' && document.activeElement === el.searchInput) el.searchInput.blur();
+    if (name !== 'draw-home' && document.activeElement === el.drawSearchInput) el.drawSearchInput.blur();
+    
+    // FAB logic based on app mode
+    if (state.appMode === 'noter') {
+      el.fab.classList.toggle('is-hidden', name === 'more' || name === 'categories');
+      el.drawFab.classList.add('is-hidden');
+    } else if (state.appMode === 'draw') {
+      el.fab.classList.add('is-hidden');
+      el.drawFab.classList.toggle('is-hidden', name !== 'draw-home');
+    }
+
+    if (name === 'categories') {
+      state.catDetail = null;
+      renderCategoriesView();
+    } else if (name === 'more') {
+      closeMoreSub();
+      updateMoreValues();
+    } else if (name === 'search') {
+      renderSearch();
+    } else if (name === 'draw-home') {
+      renderDrawHome();
+      renderDrawDateStrip();
+      setupCanvas();
+    }
   }
-}
 
   /* ==========================================================
      Note actions
@@ -1175,7 +1236,6 @@ function switchView(name) {
     state.sheetNoteId = null;
     resetSheetStyles(el.sheetBackdrop);
   }
-
   /* ==========================================================
      Save prompt
      ========================================================== */
@@ -1335,7 +1395,7 @@ function switchView(name) {
       if (!existing || existing.deletedAt) return;
       note = Object.assign({}, existing);
     } else {
-      note = NotesStore.createDraft(defaultCategoryForNewNote());
+      note = NotesStore.createDraft(defaultCategoryForNewNote(), 'text');
       isNew = true;
     }
     state.editor = {
@@ -1466,14 +1526,101 @@ function switchView(name) {
   }
 
   /* ==========================================================
+     Canvas & Drawing
+     ========================================================== */
+
+  function closeSubToolbar() {
+    el.drawSubToolbar.classList.remove('is-open');
+  }
+
+  function setupCanvas() {
+    const canvas = el.drawingCanvas;
+    if (!canvas) return;
+    
+    // Set canvas size to match its container
+    const rect = canvas.parentElement.getBoundingClientRect();
+    const dpr = global.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    // Fill with white background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, rect.width, rect.height);
+
+    state.canvas = canvas;
+    state.ctx = ctx;
+  }
+
+  function setupCanvasEvents() {
+    const canvas = el.drawingCanvas;
+    if (!canvas) return;
+
+    let lastX = 0;
+    let lastY = 0;
+
+    function getPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+
+    function startDrawing(e) {
+      e.preventDefault();
+      state.isDrawing = true;
+      const pos = getPos(e);
+      lastX = pos.x;
+      lastY = pos.y;
+      state.ctx.beginPath();
+      state.ctx.moveTo(lastX, lastY);
+    }
+
+    function draw(e) {
+      if (!state.isDrawing) return;
+      e.preventDefault();
+      const pos = getPos(e);
+      state.ctx.lineTo(pos.x, pos.y);
+      
+      if (state.currentTool === 'eraser') {
+        state.ctx.strokeStyle = '#ffffff';
+        state.ctx.lineWidth = state.currentSize * 2;
+      } else {
+        state.ctx.strokeStyle = state.currentColor;
+        state.ctx.lineWidth = state.currentSize;
+      }
+      state.ctx.stroke();
+      
+      lastX = pos.x;
+      lastY = pos.y;
+    }
+
+    function stopDrawing(e) {
+      if (!state.isDrawing) return;
+      e.preventDefault();
+      state.isDrawing = false;
+      state.ctx.closePath();
+    }
+
+    // Use pointer events (works for both touch and mouse)
+    canvas.addEventListener('pointerdown', startDrawing);
+    canvas.addEventListener('pointermove', draw);
+    canvas.addEventListener('pointerup', stopDrawing);
+    canvas.addEventListener('pointercancel', stopDrawing);
+  }
+
+  /* ==========================================================
      Back button
      ========================================================== */
 
   function handleBack() {
     if (!el.sidebarOverlay.hidden) {
-  el.sidebarOverlay.hidden = true;
-  return true;
-}
+      el.sidebarOverlay.hidden = true;
+      return true;
+    }
+
     if (!el.savePromptBackdrop.hidden) {
       cancelSavePrompt();
       return true;
@@ -1496,6 +1643,17 @@ function switchView(name) {
     if (isMoreSubOpen()) { closeMoreSub(); return true; }
 
     if (state.catDetail) { closeCategoryDetail(); return true; }
+
+    if (state.view !== 'home' && state.view !== 'draw-home') {
+      if (state.appMode === 'draw') switchView('draw-home');
+      else switchView('home');
+      return true;
+    }
+
+    if (state.appMode === 'draw') {
+      switchAppMode('noter');
+      return true;
+    }
 
     if (state.view !== 'home') {
       switchView('home');
@@ -1605,7 +1763,8 @@ function switchView(name) {
           renderAll();
           syncThemeUI();
           renderAccentSwatches();
-          renderDateStrip();
+          renderNoterDateStrip();
+          renderDrawDateStrip();
           updateMoreValues();
           if (isMoreSubOpen() && state.moreSub === 'trash') renderTrashView();
           const parts = [];
@@ -1667,6 +1826,7 @@ function switchView(name) {
   function renderAllNotesViews() {
     renderHome();
     renderSearch();
+    renderDrawHome();
     if (state.view === 'categories' || state.catDetail) renderCategoriesView();
     if (isMoreSubOpen() && state.moreSub === 'trash') renderTrashView();
   }
@@ -1762,8 +1922,7 @@ function switchView(name) {
   }
 
   /* ==========================================================
-     Elastic scroll — iOS-style rubber-band bounce on the
-     main scrollable views. Touch only; no effect on desktop.
+     Elastic scroll
      ========================================================== */
 
   function wireElasticScroll(rootEl) {
@@ -1783,6 +1942,13 @@ function switchView(name) {
       if (e.touches.length !== 1) { active = null; return; }
       const sc = pickScrollable(e.target);
       if (!sc) { active = null; return; }
+      
+      // Do not apply elastic scroll to the canvas wrapper
+      if (sc.id === 'view-draw-canvas' || sc.classList.contains('canvas-wrapper')) {
+        active = null;
+        return;
+      }
+
       active = sc;
       startY = e.touches[0].clientY;
       pulling = false;
@@ -1903,11 +2069,21 @@ function switchView(name) {
       state.justLongPressed = false;
       return;
     }
+    
+    const note = NotesStore.get(item.dataset.id);
+    if (!note) return;
+
     const inTrash = !!item.closest('#trash-list');
     if (inTrash) {
       openTrashSheet(item.dataset.id);
       return;
     }
+    
+    if (note.type === 'drawing') {
+      openCanvas(item.dataset.id);
+      return;
+    }
+
     const face = e.target.closest('.note-face');
     if (face) {
       openEditor(item.dataset.id);
@@ -1921,8 +2097,17 @@ function switchView(name) {
     e.preventDefault();
     const item = face.closest('.note-item');
     if (!item) return;
-    if (item.closest('#trash-list')) openTrashSheet(item.dataset.id);
-    else openEditor(item.dataset.id);
+    
+    const note = NotesStore.get(item.dataset.id);
+    if (!note) return;
+
+    if (item.closest('#trash-list')) {
+      openTrashSheet(item.dataset.id);
+    } else if (note.type === 'drawing') {
+      openCanvas(item.dataset.id);
+    } else {
+      openEditor(item.dataset.id);
+    }
   }
 
   /* ==========================================================
@@ -1985,18 +2170,17 @@ function switchView(name) {
      ========================================================== */
 
   function wireEvents() {
-    if (el.sidebarOpen) {
-  el.sidebarOpen.addEventListener('click', () => { el.sidebarOverlay.hidden = false; });
-}
-el.sidebarOverlay.addEventListener('click', (e) => {
-  if (e.target === el.sidebarOverlay) el.sidebarOverlay.hidden = true;
-});
-el.sidebarItems.forEach(item => {
-  item.addEventListener('click', () => {
-    el.sidebarOverlay.hidden = true;
-    switchAppMode(item.dataset.appMode);
-  });
-});
+    // Sidebar
+    if (el.sidebarOpen) el.sidebarOpen.addEventListener('click', () => { el.sidebarOverlay.hidden = false; });
+    if (el.drawSidebarOpen) el.drawSidebarOpen.addEventListener('click', () => { el.sidebarOverlay.hidden = false; });
+    el.sidebarOverlay.addEventListener('click', (e) => {
+      if (e.target === el.sidebarOverlay) el.sidebarOverlay.hidden = true;
+    });
+    el.sidebarItems.forEach(item => {
+      item.addEventListener('click', () => switchAppMode(item.dataset.appMode));
+    });
+
+    // Noter Tabs
     el.tabbar.addEventListener('click', (e) => {
       const tab = e.target.closest('.tab');
       if (!tab) return;
@@ -2005,9 +2189,58 @@ el.sidebarItems.forEach(item => {
       switchView(name);
     });
 
+    // FABs
     el.fab.addEventListener('click', () => openEditor(null));
+    el.drawFab.addEventListener('click', () => switchView('draw-canvas'));
 
-    const noteLists = [el.homeList, el.searchList, el.catContent, el.trashList];
+    // Canvas Buttons
+    el.drawCanvasBack.addEventListener('click', () => {
+      closeSubToolbar();
+      switchView('draw-home');
+    });
+    
+    el.toolPen.addEventListener('click', () => {
+      state.currentTool = 'pen';
+      el.toolPen.classList.add('is-active');
+      el.toolEraser.classList.remove('is-active');
+      el.drawSubToolbar.classList.toggle('is-open');
+    });
+
+    el.toolEraser.addEventListener('click', () => {
+      state.currentTool = 'eraser';
+      el.toolEraser.classList.add('is-active');
+      el.toolPen.classList.remove('is-active');
+      el.drawSubToolbar.classList.toggle('is-open');
+    });
+
+    el.colorSwatches.addEventListener('click', (e) => {
+      const sw = e.target.closest('.draw-color-swatch');
+      if (!sw) return;
+      state.currentColor = sw.dataset.color;
+      el.penColorIndicator.style.background = state.currentColor;
+      $$('.draw-color-swatch', el.colorSwatches).forEach(s => s.classList.remove('is-active'));
+      sw.classList.add('is-active');
+      if (state.currentTool === 'eraser') {
+        state.currentTool = 'pen';
+        el.toolPen.classList.add('is-active');
+        el.toolEraser.classList.remove('is-active');
+      }
+    });
+
+    el.sizeOptions.addEventListener('click', (e) => {
+      const btn = e.target.closest('.size-btn');
+      if (!btn) return;
+      state.currentSize = parseInt(btn.dataset.size, 10);
+      $$('.size-btn', el.sizeOptions).forEach(b => b.classList.remove('is-active'));
+      btn.classList.add('is-active');
+    });
+
+    el.drawingCanvas.addEventListener('pointerdown', () => {
+      if (el.drawSubToolbar.classList.contains('is-open')) closeSubToolbar();
+    });
+
+    // Note lists
+    const noteLists = [el.homeList, el.searchList, el.catContent, el.trashList, el.drawHomeList];
     for (const list of noteLists) {
       list.addEventListener('click', handleListClick);
       list.addEventListener('keydown', handleListKeydown);
@@ -2022,6 +2255,7 @@ el.sidebarItems.forEach(item => {
       });
     }
 
+    // Date Strips
     if (el.homeDateStrip) {
       el.homeDateStrip.addEventListener('click', (e) => {
         const chip = e.target.closest('.date-chip');
@@ -2030,17 +2264,34 @@ el.sidebarItems.forEach(item => {
         if (!Number.isFinite(ts)) return;
         if (state.homeDate === ts) return;
         state.homeDate = ts;
-        renderDateStrip();
+        renderNoterDateStrip();
         renderHome();
       });
     }
 
+    if (el.drawHomeDateStrip) {
+      el.drawHomeDateStrip.addEventListener('click', (e) => {
+        const chip = e.target.closest('.date-chip');
+        if (!chip) return;
+        const ts = Number(chip.dataset.day);
+        if (!Number.isFinite(ts)) return;
+        if (state.drawHomeDate === ts) return;
+        state.drawHomeDate = ts;
+        state.drawSearchExpanded = false; 
+        el.drawSearchInput.value = '';
+        renderDrawDateStrip();
+        renderDrawHome();
+      });
+    }
+
+    // Categories
     el.catContent.addEventListener('pointerdown', catPointerDown, { passive: true });
     el.catContent.addEventListener('pointermove', catPointerMove, { passive: true });
     el.catContent.addEventListener('pointerup', catPointerEnd);
     el.catContent.addEventListener('pointercancel', catPointerEnd);
     el.catContent.addEventListener('click', catContentClick);
 
+    // Noter Search
     let searchRaf = 0;
     el.searchInput.addEventListener('input', () => {
       if (searchRaf) return;
@@ -2065,6 +2316,26 @@ el.sidebarItems.forEach(item => {
       el.searchHeader.classList.toggle('is-scrolled', searchView.scrollTop > 2);
     }, { passive: true });
 
+    // Draw Search
+    let drawSearchRaf = 0;
+    el.drawSearchInput.addEventListener('input', () => {
+      if (drawSearchRaf) return;
+      drawSearchRaf = requestAnimationFrame(() => { drawSearchRaf = 0; renderDrawHome(); });
+    });
+
+    el.drawSearchClear.addEventListener('click', () => {
+      el.drawSearchInput.value = '';
+      renderDrawHome();
+      el.drawSearchInput.focus({ preventScroll: true });
+    });
+
+    el.drawAllLabel.addEventListener('click', () => {
+      state.drawSearchExpanded = !state.drawSearchExpanded;
+      el.drawSearchInput.value = '';
+      renderDrawHome();
+    });
+
+    // Categories UI
     el.catBack.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -2123,6 +2394,7 @@ el.sidebarItems.forEach(item => {
       renderCategoryIconPicker();
     });
 
+    // Sort
     el.sortSheetCancel.addEventListener('click', closeSortSheet);
     el.sortSheetBackdrop.addEventListener('click', (e) => {
       if (e.target === el.sortSheetBackdrop) closeSortSheet();
@@ -2135,7 +2407,7 @@ el.sidebarItems.forEach(item => {
       renderSearch();
     });
 
-    /* ---- More page navigation ---- */
+    // More Menu
     const moreView = $('#view-more');
     moreView.addEventListener('click', (e) => {
       const nav = e.target.closest('[data-more-nav]');
@@ -2158,7 +2430,7 @@ el.sidebarItems.forEach(item => {
     if (el.moreTrashBack)      el.moreTrashBack.addEventListener('click', closeMoreSub);
     if (el.moreTrashEmpty)     el.moreTrashEmpty.addEventListener('click', emptyTrash);
 
-    /* ---- Trash sheet ---- */
+    // Trash
     el.trashSheetCancel.addEventListener('click', closeTrashSheet);
     el.trashSheetBackdrop.addEventListener('click', (e) => {
       if (e.target === el.trashSheetBackdrop) closeTrashSheet();
@@ -2174,7 +2446,7 @@ el.sidebarItems.forEach(item => {
       else if (action === 'purge') purgeTrashed(id);
     });
 
-    /* ---- Save prompt ---- */
+    // Save prompt
     if (el.savePromptCancel) el.savePromptCancel.addEventListener('click', cancelSavePrompt);
     if (el.savePromptSave)    el.savePromptSave.addEventListener('click', () => onSavePromptAction('save'));
     if (el.savePromptDiscard) el.savePromptDiscard.addEventListener('click', () => onSavePromptAction('discard'));
@@ -2182,7 +2454,7 @@ el.sidebarItems.forEach(item => {
       if (e.target === el.savePromptBackdrop) cancelSavePrompt();
     });
 
-    /* ---- Note editor ---- */
+    // Note Editor
     el.editorBack.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -2237,7 +2509,7 @@ el.sidebarItems.forEach(item => {
       scheduleEditorSave();
     });
 
-    /* ---- Note action sheet ---- */
+    // Note action sheet
     el.sheetCancel.addEventListener('click', closeSheet);
     el.sheetBackdrop.addEventListener('click', (e) => {
       if (e.target === el.sheetBackdrop) closeSheet();
@@ -2255,14 +2527,14 @@ el.sidebarItems.forEach(item => {
       else if (action === 'delete') deleteNote(id);
     });
 
-    /* ---- Confirm dialog ---- */
+    // Confirm dialog
     el.dialogCancel.addEventListener('click', closeConfirm);
     el.dialogConfirm.addEventListener('click', runDialogAction);
     el.dialogBackdrop.addEventListener('click', (e) => {
       if (e.target === el.dialogBackdrop) closeConfirm();
     });
 
-    /* ---- Theme rows ---- */
+    // Theme + Accent
     el.themeList.addEventListener('click', (e) => {
       const row = e.target.closest('.theme-row');
       if (!row) return;
@@ -2273,7 +2545,6 @@ el.sidebarItems.forEach(item => {
       renderAccentSwatches();
     });
 
-    /* ---- Accent swatches ---- */
     el.accentSwatches.addEventListener('click', (e) => {
       const sw = e.target.closest('.swatch');
       if (!sw) return;
@@ -2289,11 +2560,14 @@ el.sidebarItems.forEach(item => {
 
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
+      if (!el.sidebarOverlay.hidden) { el.sidebarOverlay.hidden = true; return; }
       if (!el.savePromptBackdrop.hidden) { cancelSavePrompt(); return; }
       if (state.catEditor) { closeCategoryEditor(); return; }
       if (state.catSheetId) { closeCategoryActions(); return; }
       if (state.trashSheetNoteId) { closeTrashSheet(); return; }
       if (!el.sortSheetBackdrop.hidden) { closeSortSheet(); return; }
+      if (state.subToolbarOpenFor) { closeSubToolbar(); return; }
+      if (state.view === 'draw-canvas') { switchView('draw-home'); return; }
       if (state.editor) { requestEditorClose(); return; }
       if (!el.dialogBackdrop.hidden) { closeConfirm(); return; }
       if (!el.sheetBackdrop.hidden) { closeSheet(); return; }
@@ -2320,6 +2594,8 @@ el.sidebarItems.forEach(item => {
     wireSheetDrag(el.catEditorBackdrop);
     wireSheetDrag(el.sortSheetBackdrop);
 
+    setupCanvasEvents();
+
     if (capApp && typeof capApp.addListener === 'function') {
       try {
         capApp.addListener('backButton', () => {
@@ -2337,24 +2613,15 @@ el.sidebarItems.forEach(item => {
   /* ==========================================================
      Boot
      ========================================================== */
-function renderDrawHome() {
-  // This will be fully built in the next step. 
-  // For now, it just shows an empty state.
-  if (el.drawHomeList) {
-    el.drawHomeList.innerHTML = emptyStateHtml('i-draw', 'No drawings yet', 'Tap + to start drawing.');
-  }
-}
 
-function renderDrawDateStrip() {
-  // This will be built later when we add drawing functionality.
-}
   async function boot() {
     Settings.applyTheme();
     syncStatusBar();
     syncThemeUI();
     renderAccentSwatches();
     updateGreeting();
-    renderDateStrip();
+    renderNoterDateStrip();
+    renderDrawDateStrip();
     updateMoreValues();
     setInterval(updateGreeting, 60000);
 
@@ -2386,7 +2653,14 @@ function renderDrawDateStrip() {
           const selectedOffset = Math.round((state.homeDate - todayMid) / DAY);
           if (selectedOffset < -15 || selectedOffset > 15) {
             state.homeDate = todayMid;
-            renderDateStrip();
+            renderNoterDateStrip();
+          }
+        }
+        if (state.drawHomeDateInitialized && state.drawHomeDate != null) {
+          const selectedOffset = Math.round((state.drawHomeDate - todayMid) / DAY);
+          if (selectedOffset < -15 || selectedOffset > 15) {
+            state.drawHomeDate = todayMid;
+            renderDrawDateStrip();
           }
         }
         renderAll();
