@@ -27,7 +27,8 @@
       updatedAt: Number.isFinite(n.updatedAt) ? n.updatedAt : now,
       pinned: n.pinned === true,
       favorite: n.favorite === true,
-      deletedAt: Number.isFinite(n.deletedAt) ? n.deletedAt : null
+      deletedAt: Number.isFinite(n.deletedAt) ? n.deletedAt : null,
+      type: n.type === 'drawing' ? 'drawing' : 'text'
     };
   }
 
@@ -47,6 +48,13 @@
     /* ---- Live vs trashed slices ---- */
 
     live() {
+       liveText() {
+      return this.live().filter((n) => n.type === 'text');
+    },
+
+    liveDrawings() {
+      return this.live().filter((n) => n.type === 'drawing');
+    },
       return this.notes.filter((n) => !n.deletedAt);
     },
 
@@ -79,7 +87,7 @@
       return normalized;
     },
 
-    createDraft(categoryId) {
+    createDraft(categoryId, type) {
       const now = Date.now();
       return {
         id: uuid(),
@@ -90,7 +98,8 @@
         updatedAt: now,
         pinned: false,
         favorite: false,
-        deletedAt: null
+        deletedAt: null,
+        type: type === 'drawing' ? 'drawing' : 'text'
       };
     },
 
@@ -156,7 +165,7 @@
     },
 
     sorted(list) {
-      const source = list || this.live();
+      const source = list || this.liveText();
       return source.slice().sort((a, b) => {
         if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
         return b.updatedAt - a.updatedAt;
@@ -164,16 +173,16 @@
     },
 
     favorites() {
-      return this.sorted(this.live().filter((n) => n.favorite));
+      return this.sorted(this.liveText().filter((n) => n.favorite));
     },
 
     byCategory(categoryId) {
-      return this.sorted(this.live().filter((n) => n.category === categoryId));
+      return this.sorted(this.liveText().filter((n) => n.category === categoryId));
     },
 
     countsByCategory() {
       const map = Object.create(null);
-      for (const n of this.live()) {
+      for (const n of this.liveText()) {
         map[n.category] = (map[n.category] || 0) + 1;
       }
       return map;
