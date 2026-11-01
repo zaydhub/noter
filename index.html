@@ -151,12 +151,10 @@
     </section>
 
     <section class="view view--nested" id="view-more" data-view="more" aria-label="More">
-
       <div class="sub-view" id="more-main">
         <header class="view-header view-header--title">
           <h1 class="page-title">More</h1>
         </header>
-
         <div class="section">
           <h2 class="section-title">Appearance</h2>
           <div class="card">
@@ -175,7 +173,6 @@
             </button>
           </div>
         </div>
-
         <div class="section">
           <h2 class="section-title">Data</h2>
           <div class="card">
@@ -197,7 +194,6 @@
             </button>
           </div>
         </div>
-
         <div class="section">
           <h2 class="section-title">About</h2>
           <div class="card">
@@ -211,10 +207,8 @@
             </button>
           </div>
         </div>
-
         <p class="footer-note" id="storage-note"></p>
       </div>
-
       <div class="sub-view" id="more-appearance" hidden>
         <header class="view-header view-header--title">
           <div class="header-row">
@@ -246,7 +240,6 @@
           </div>
         </div>
       </div>
-
       <div class="sub-view" id="more-accent" hidden>
         <header class="view-header view-header--title">
           <div class="header-row">
@@ -262,7 +255,6 @@
           </div>
         </div>
       </div>
-
       <div class="sub-view" id="more-trash" hidden>
         <header class="view-header view-header--title">
           <div class="header-row">
@@ -277,7 +269,6 @@
         </header>
         <div id="trash-list" class="list-root"></div>
       </div>
-
       <div class="sub-view" id="more-about" hidden>
         <header class="view-header view-header--title">
           <div class="header-row">
@@ -509,17 +500,16 @@
     </div>
   </div>
 
-  <!-- Save prompt — appears when closing the editor with unsaved changes. -->
-<div class="dialog-backdrop" id="save-prompt-backdrop" hidden>
-  <div class="dialog dialog--save-prompt" role="alertdialog" aria-modal="true" aria-labelledby="save-prompt-title">
-    <h2 class="dialog-title" id="save-prompt-title">Discard note?</h2>
-    <div class="dialog-actions">
-      <button type="button" class="dialog-btn dialog-btn--danger" id="save-prompt-discard">Discard</button>
-      <button type="button" class="dialog-btn dialog-btn--primary" id="save-prompt-save">Save</button>
-      <button type="button" class="dialog-btn" id="save-prompt-cancel">Cancel</button>
+  <div class="dialog-backdrop" id="save-prompt-backdrop" hidden>
+    <div class="dialog dialog--save-prompt" role="alertdialog" aria-modal="true" aria-labelledby="save-prompt-title">
+      <h2 class="dialog-title" id="save-prompt-title">Discard note?</h2>
+      <div class="dialog-actions">
+        <button type="button" class="dialog-btn dialog-btn--danger" id="save-prompt-discard">Discard</button>
+        <button type="button" class="dialog-btn dialog-btn--primary" id="save-prompt-save">Save</button>
+        <button type="button" class="dialog-btn" id="save-prompt-cancel">Cancel</button>
+      </div>
     </div>
   </div>
-</div>
 
   <div class="dialog-backdrop" id="dialog-backdrop" hidden>
     <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dialog-title" aria-describedby="dialog-msg">
