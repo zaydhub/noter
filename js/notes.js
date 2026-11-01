@@ -33,7 +33,6 @@
   }
 
   const NotesStore = {
-    /* Every note, live + trashed. */
     notes: [],
     ready: false,
     TRASH_TTL_MS,
@@ -44,9 +43,6 @@
       this.ready = true;
       return this.notes;
     },
-     
-
-    /* ---- Live vs trashed slices ---- */
 
     live() {
       return this.notes.filter((n) => !n.deletedAt);
@@ -72,13 +68,9 @@
       return count;
     },
 
-    /* ---- Reads ---- */
-
     get(id) {
       return this.notes.find((n) => n.id === id) || null;
     },
-
-    /* ---- Writes ---- */
 
     async upsert(note) {
       const normalized = normalize(note);
@@ -105,7 +97,6 @@
       };
     },
 
-    /* Hard delete — used for empty drafts. */
     async remove(id) {
       const index = this.notes.findIndex((n) => n.id === id);
       if (index === -1) return null;
@@ -114,7 +105,6 @@
       return removed;
     },
 
-    /* Soft delete — moves a note to Trash. */
     async softDelete(id) {
       const note = this.get(id);
       if (!note) return null;
@@ -123,7 +113,6 @@
       return note;
     },
 
-    /* Restore a trashed note. */
     async restore(id) {
       const note = this.get(id);
       if (!note || !note.deletedAt) return null;
@@ -132,14 +121,12 @@
       return note;
     },
 
-    /* Permanently remove a trashed note. */
     async purge(id) {
       const note = this.get(id);
       if (!note) return null;
       return this.remove(id);
     },
 
-    /* Empty the whole trash. */
     async emptyTrash() {
       const ids = this.notes.filter((n) => n.deletedAt).map((n) => n.id);
       if (!ids.length) return 0;
@@ -149,7 +136,6 @@
       return ids.length;
     },
 
-    /* Auto-purge items older than 30 days. Called once on boot. */
     async purgeExpired() {
       const cutoff = Date.now() - TRASH_TTL_MS;
       const expired = this.notes.filter((n) => n.deletedAt && n.deletedAt < cutoff);
@@ -159,8 +145,6 @@
       this.notes = this.notes.filter((n) => !set.has(n.id));
       return expired.length;
     },
-
-    /* ---- Filters / sorting (only live notes) ---- */
 
     isBlank(note) {
       return !note || (!note.title.trim() && !note.content.trim());
@@ -206,6 +190,9 @@
     displayTitle(note) {
       const t = (note.title || '').trim();
       if (t) return t;
+      if (note.type === 'drawing') {
+        return 'Untitled Drawing';
+      }
       const firstLine = (note.content || '')
         .split('\n')
         .map((l) => l.trim())
@@ -213,7 +200,6 @@
       return firstLine || '';
     },
 
-    /* Days remaining before auto-purge. Returns 0..30. */
     daysLeft(note) {
       if (!note || !note.deletedAt) return 0;
       const elapsed = Date.now() - note.deletedAt;
