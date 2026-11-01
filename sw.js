@@ -2,7 +2,7 @@
    Noter — service worker
    ============================================================ */
 
-const CACHE = 'noter-v3';
+const CACHE = 'noter-v4'; // BUMPED TO V4
 
 const ASSETS = [
   './',
