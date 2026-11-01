@@ -1,4 +1,650 @@
-  /* ==========================================================
+/* ============================================================
+   Noter — UI layer
+   ============================================================ */
+(function (global) {
+  'use strict';
+
+  const $  = (sel, root) => (root || document).querySelector(sel);
+  const $$ = (sel, root) => Array.prototype.slice.call((root || document).querySelectorAll(sel));
+
+  const Cap = global.Capacitor;
+  const isCapacitor = !!(Cap && typeof Cap.isNativePlatform === 'function' && Cap.isNativePlatform());
+  const capPlugins = (Cap && Cap.Plugins) || {};
+  const capApp = capPlugins.App || null;
+  const capFilesystem = capPlugins.Filesystem || null;
+  const capShare = capPlugins.Share || null;
+  const capStatusBar = capPlugins.StatusBar || null;
+
+  const el = {
+    metaTheme:      $('#meta-theme-color'),
+    views:          $$('.view'),
+    tabbar:         $('#tabbar'),
+    tabs:           $$('.tab'),
+    fab:            $('#fab'),
+    drawFab:        $('#draw-fab'),
+
+    sidebarOverlay: $('#sidebar-overlay'),
+    sidebarItems:   $$('.sidebar-item'),
+    sidebarOpen:    $('#sidebar-open'),
+    drawSidebarOpen:$('#draw-sidebar-open'),
+
+    greetingTitle:  $('#greeting-title'),
+    greetingSub:    $('#greeting-sub'),
+    homeDate:       $('#home-date'),
+    homeDateStrip:  $('#home-date-strip'),
+    homeList:       $('#home-list'),
+
+    drawHomeDate:   $('#draw-home-date'),
+    drawHomeDateStrip: $('#draw-home-date-strip'),
+    drawHomeList:   $('#draw-home-list'),
+    
+    drawSearchInput: $('#draw-search-input'),
+    drawSearchClear: $('#draw-search-clear'),
+    drawAllLabel:    $('#draw-all-label'),
+
+    drawCanvasBack:  $('#draw-canvas-back'),
+    drawCanvasTitle: $('#draw-canvas-title'),
+    drawCanvasSave:  $('#draw-canvas-save'),
+    drawingCanvas:   $('#drawing-canvas'),
+    drawSubToolbar:  $('#draw-sub-toolbar'),
+    penColorIndicator: $('#pen-color-indicator'),
+
+    toolPen:         $('#tool-pen'),
+    toolEraser:      $('#tool-eraser'),
+    colorSwatches:   $('#color-swatches'),
+    sizeOptions:     $('#size-options'),
+    toolUndo:        $('#tool-undo'),
+    toolRedo:        $('#tool-redo'),
+    toolClear:       $('#tool-clear'),
+
+    searchList:     $('#search-list'),
+    searchInput:    $('#search-input'),
+    searchClear:    $('#search-clear'),
+    searchHeader:   $('#view-search .view-header--search'),
+    allNotesLabel:  $('#all-notes-label'),
+    allNotesSort:   $('#all-notes-sort'),
+    allNotesSortLabel: $('#all-notes-sort-label'),
+
+    catBack:        $('#cat-back'),
+    catTitle:       $('#cat-title'),
+    catHeaderActions: $('#cat-header-actions'),
+    catViewToggle:  $('#cat-view-toggle'),
+    catAdd:         $('#cat-add'),
+    catContent:     $('#cat-content'),
+
+    moreMain:            $('#more-main'),
+    moreAppearance:      $('#more-appearance'),
+    moreAccent:          $('#more-accent'),
+    moreAbout:           $('#more-about'),
+    moreTrash:           $('#more-trash'),
+    moreAppearanceValue: $('#more-appearance-value'),
+    moreAccentSwatch:    $('#more-accent-swatch'),
+    moreAppearanceBack:  $('#more-appearance-back'),
+    moreAccentBack:      $('#more-accent-back'),
+    moreAboutBack:       $('#more-about-back'),
+    moreTrashBack:       $('#more-trash-back'),
+    moreTrashCount:      $('#more-trash-count'),
+    moreTrashEmpty:      $('#more-trash-empty'),
+    trashList:           $('#trash-list'),
+
+    themeList:      $('#theme-list'),
+    accentSwatches: $('#accent-swatches'),
+    storageNote:    $('#storage-note'),
+
+    editor:         $('#editor'),
+    editorBack:     $('#editor-back'),
+    editorMode:     $('#editor-mode'),
+    editorPin:      $('#editor-pin'),
+    editorFav:      $('#editor-fav'),
+    editorDelete:   $('#editor-delete'),
+    editorTitle:    $('#editor-title'),
+    editorContent:  $('#editor-content'),
+    editorCats:     $('#editor-categories'),
+
+    sheetBackdrop:  $('#sheet-backdrop'),
+    sheetTitle:     $('#sheet-title'),
+    sheetActions:   $('#sheet-actions'),
+    sheetCancel:    $('#sheet-cancel'),
+
+    trashSheetBackdrop: $('#trash-sheet-backdrop'),
+    trashSheetTitle:    $('#trash-sheet-title'),
+    trashSheetActions:  $('#trash-sheet-actions'),
+    trashSheetCancel:   $('#trash-sheet-cancel'),
+
+    catSheetBackdrop: $('#cat-sheet-backdrop'),
+    catSheetTitle:  $('#cat-sheet-title'),
+    catSheetActions: $('#cat-sheet-actions'),
+    catSheetCancel: $('#cat-sheet-cancel'),
+
+    catEditorBackdrop: $('#cat-editor-backdrop'),
+    catEditorTitle: $('#cat-editor-title'),
+    catEditorName:  $('#cat-editor-name'),
+    catEditorIcons: $('#cat-editor-icons'),
+    catEditorCancel: $('#cat-editor-cancel'),
+    catEditorSave:  $('#cat-editor-save'),
+
+    sortSheetBackdrop: $('#sort-sheet-backdrop'),
+    sortSheetActions:  $('#sort-sheet-actions'),
+    sortSheetCancel:   $('#sort-sheet-cancel'),
+
+    savePromptBackdrop: $('#save-prompt-backdrop'),
+    savePromptDiscard:  $('#save-prompt-discard'),
+    savePromptSave:     $('#save-prompt-save'),
+    savePromptCancel:   $('#save-prompt-cancel'),
+
+    dialogBackdrop: $('#dialog-backdrop'),
+    dialogTitle:    $('#dialog-title'),
+    dialogMsg:      $('#dialog-msg'),
+    dialogCancel:   $('#dialog-cancel'),
+    dialogConfirm:  $('#dialog-confirm'),
+
+    toast:          $('#toast'),
+    toastMsg:       $('#toast-msg'),
+    toastAction:    $('#toast-action'),
+
+    importFile:     $('#import-file')
+  };
+
+  const SORT_LABELS = { newest: 'Newest', oldest: 'Oldest', az: 'A–Z', za: 'Z–A' };
+  const THEME_LABELS = { light: 'Light', dark: 'Dark', system: 'System' };
+
+  const state = {
+    appMode: 'noter',
+    view: 'home',
+    editor: null,
+    sheetNoteId: null,
+    trashSheetNoteId: null,
+    dialogAction: null,
+    toastTimer: null,
+    lastFocused: null,
+    closingEditor: false,
+    justLongPressed: false,
+
+    catDetail: null,
+    catEditor: null,
+    catSheetId: null,
+    catLongPressFired: false,
+
+    homeDate: null,
+    homeDateInitialized: false,
+    drawHomeDate: null,
+    drawHomeDateInitialized: false,
+
+    searchExpanded: false,
+    drawSearchExpanded: false,
+
+    moreSub: 'main',
+
+    canvas: null,
+    ctx: null,
+    isDrawing: false,
+    currentTool: 'pen',
+    currentColor: '#000000',
+    currentSize: 2,
+    canvasNoteId: null,
+    canvasDirty: false,
+    undoStack: [],
+    redoStack: [],
+    subToolbarOpenFor: null
+  };
+
+  function escapeHtml(str) {
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function startOfDay(ts) {
+    const d = new Date(ts);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  }
+
+  const DAY = 86400000;
+
+  function pad2(n) { return n < 10 ? '0' + n : String(n); }
+
+  function formatTime(ts) {
+    const d = new Date(ts);
+    let h = d.getHours();
+    const m = d.getMinutes();
+    const suffix = h >= 12 ? 'pm' : 'am';
+    h = h % 12; if (h === 0) h = 12;
+    return pad2(h) + ':' + pad2(m) + ' ' + suffix;
+  }
+
+  function formatDay(ts) {
+    const todayStart = startOfDay(Date.now());
+    const noteStart = startOfDay(ts);
+    const diffDays = Math.round((todayStart - noteStart) / DAY);
+    if (diffDays <= 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    const d = new Date(ts);
+    return pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear();
+  }
+
+  function groupLabel(ts) {
+    const todayStart = startOfDay(Date.now());
+    const noteStart = startOfDay(ts);
+    const dayDiff = Math.round((todayStart - noteStart) / DAY);
+    if (dayDiff <= 0) return 'Today';
+    if (dayDiff === 1) return 'Yesterday';
+    if (dayDiff < 7) return new Date(ts).toLocaleDateString(undefined, { weekday: 'long' });
+    if (new Date(ts).getFullYear() === new Date().getFullYear()) {
+      return new Date(ts).toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
+    }
+    return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function longDate(ts) {
+    return new Date(ts).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  }
+
+  function shortWeekday(ts) {
+    return new Date(ts).toLocaleDateString(undefined, { weekday: 'short' });
+  }
+
+  function updateGreeting() {
+    const h = new Date().getHours();
+    let greeting;
+    if (h >= 5 && h < 12) greeting = 'Good morning';
+    else if (h >= 12 && h < 17) greeting = 'Good afternoon';
+    else if (h >= 17 && h < 22) greeting = 'Good evening';
+    else greeting = 'Good night';
+    el.greetingTitle.textContent = greeting + ', Zayd';
+    el.greetingSub.textContent = 'What’s on your mind?';
+    if (el.homeDate) el.homeDate.textContent = longDate(Date.now());
+    if (el.drawHomeDate) el.drawHomeDate.textContent = longDate(Date.now());
+  }
+
+  function syncStatusBar() {
+    if (!capStatusBar) return;
+    const resolved = Settings.resolvedTheme();
+    try {
+      if (resolved === 'dark') {
+        capStatusBar.setStyle({ style: 'DARK' });
+        capStatusBar.setBackgroundColor({ color: '#000000' });
+      } else {
+        capStatusBar.setStyle({ style: 'LIGHT' });
+        capStatusBar.setBackgroundColor({ color: '#f5f5f7' });
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  function cssEscape(value) {
+    if (global.CSS && typeof CSS.escape === 'function') return CSS.escape(value);
+    return String(value).replace(/["\\]/g, '\\$&');
+  }
+
+  function buildDateStrip(stripEl, selectedTs) {
+    if (!stripEl) return;
+    const todayMid = startOfDay(Date.now());
+    if (selectedTs === null) selectedTs = todayMid;
+
+    const ref = new Date(todayMid);
+    const year = ref.getFullYear();
+    const month = ref.getMonth();
+    const firstMid = startOfDay(new Date(year, month, 1).getTime());
+    const lastMid = startOfDay(new Date(year, month + 1, 0).getTime());
+
+    let html = '';
+    for (let ts = firstMid; ts <= lastMid; ts += DAY) {
+      const isSelected = ts === selectedTs;
+      const classes = 'date-chip' + (isSelected ? ' is-selected' : '');
+      html += (
+        '<button type="button" class="' + classes + '" data-day="' + ts + '" ' +
+                'role="tab" aria-selected="' + (isSelected ? 'true' : 'false') + '">' +
+          '<span class="date-chip-day">' + escapeHtml(shortWeekday(ts)) + '</span>' +
+          '<span class="date-chip-num">' + new Date(ts).getDate() + '</span>' +
+        '</button>'
+      );
+    }
+    stripEl.innerHTML = html;
+
+    requestAnimationFrame(() => {
+      if (!stripEl) return;
+      const target = stripEl.querySelector('.date-chip.is-selected');
+      if (!target) return;
+      const targetCenter = target.offsetLeft + target.offsetWidth / 2;
+      const stripHalf = stripEl.clientWidth / 2;
+      const nextLeft = Math.max(0, targetCenter - stripHalf);
+      stripEl.scrollTo({ left: nextLeft, behavior: 'auto' });
+    });
+  }
+
+  function renderNoterDateStrip() {
+    if (!state.homeDateInitialized) {
+      state.homeDate = startOfDay(Date.now());
+      state.homeDateInitialized = true;
+    }
+    buildDateStrip(el.homeDateStrip, state.homeDate);
+  }
+
+  function renderDrawDateStrip() {
+    if (!state.drawHomeDateInitialized) {
+      state.drawHomeDate = startOfDay(Date.now());
+      state.drawHomeDateInitialized = true;
+    }
+    buildDateStrip(el.drawHomeDateStrip, state.drawHomeDate);
+  }
+
+  function noteFlagsHtml(note) {
+    let html = '';
+    if (note.pinned) html += '<svg class="note-flag note-flag--pin" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-pin"/></svg>';
+    if (note.favorite) html += '<svg class="note-flag note-flag--fav" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-star"/></svg>';
+    return html;
+  }
+
+  function noteRowHtml(note) {
+    const cat = Settings.getCategory(note.category);
+    const title = NotesStore.displayTitle(note);
+    const titleClass = title ? 'note-title' : 'note-title note-title--empty';
+    const titleText = title ? escapeHtml(title) : 'Empty note';
+    const flags = noteFlagsHtml(note);
+    const aria = title ? title : 'Empty note';
+    const time = escapeHtml(formatTime(note.updatedAt));
+    const day = escapeHtml(formatDay(note.updatedAt));
+
+    let iconHtml = '';
+    if (note.type === 'drawing') {
+       iconHtml = '<span class="note-icon" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24"><use href="#i-draw"/></svg></span>';
+    } else {
+       iconHtml = '<span class="note-icon" aria-hidden="true"><svg class="ico"><use href="#' + escapeHtml(cat.icon) + '"/></svg></span>';
+    }
+
+    return (
+      '<li class="note-item" data-id="' + escapeHtml(note.id) + '">' +
+        '<div class="note-face" role="button" tabindex="0" aria-label="' + escapeHtml(aria) + '">' +
+          iconHtml +
+          '<span class="note-main">' +
+            '<span class="note-title-row">' +
+              '<span class="' + titleClass + '">' + titleText + '</span>' +
+              (flags ? '<span class="note-flags">' + flags + '</span>' : '') +
+            '</span>' +
+            '<span class="note-meta">' +
+              '<span class="note-meta-time">' + time + '</span>' +
+              '<span class="note-meta-day">' + day + '</span>' +
+            '</span>' +
+          '</span>' +
+        '</div>' +
+      '</li>'
+    );
+  }
+
+  function trashRowHtml(note) {
+    const cat = Settings.getCategory(note.category);
+    const title = NotesStore.displayTitle(note);
+    const titleClass = title ? 'note-title' : 'note-title note-title--empty';
+    const titleText = title ? escapeHtml(title) : 'Empty note';
+    const days = NotesStore.daysLeft(note);
+    const daysText = days === 1 ? 'Deletes in 1 day' : ('Deletes in ' + days + ' days');
+    const aria = (title ? title : 'Empty note') + '. ' + daysText;
+
+    let iconHtml = '';
+    if (note.type === 'drawing') {
+       iconHtml = '<span class="note-icon" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24"><use href="#i-draw"/></svg></span>';
+    } else {
+       iconHtml = '<span class="note-icon" aria-hidden="true"><svg class="ico"><use href="#' + escapeHtml(cat.icon) + '"/></svg></span>';
+    }
+
+    return (
+      '<li class="note-item trash-item" data-id="' + escapeHtml(note.id) + '">' +
+        '<div class="note-face" role="button" tabindex="0" aria-label="' + escapeHtml(aria) + '">' +
+          iconHtml +
+          '<span class="note-main">' +
+            '<span class="note-title-row">' +
+              '<span class="' + titleClass + '">' + titleText + '</span>' +
+            '</span>' +
+            '<span class="note-meta">' +
+              '<span class="note-meta-time">Deleted ' + escapeHtml(formatTime(note.deletedAt)) + '</span>' +
+              '<span class="note-meta-day">' + escapeHtml(daysText) + '</span>' +
+            '</span>' +
+          '</span>' +
+        '</div>' +
+      '</li>'
+    );
+  }
+
+  function emptyStateHtml(iconId, title, sub) {
+    return (
+      '<div class="empty">' +
+        '<div class="empty-ico"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true">' +
+          '<use href="#' + iconId + '"/></svg></div>' +
+        '<p class="empty-title">' + escapeHtml(title) + '</p>' +
+        '<p class="empty-sub">' + escapeHtml(sub) + '</p>' +
+      '</div>'
+    );
+  }
+
+  function renderGrouped(container, notes, emptyHtml) {
+    if (!notes.length) { container.innerHTML = emptyHtml; return; }
+    let html = '';
+    let currentGroup = null;
+    let open = false;
+    for (let i = 0; i < notes.length; i++) {
+      const note = notes[i];
+      const label = groupLabel(note.updatedAt);
+      if (label !== currentGroup) {
+        if (open) html += '</ul></div>';
+        html += '<div class="group"><h2 class="group-title">' + escapeHtml(label) + '</h2><ul class="note-list">';
+        currentGroup = label;
+        open = true;
+      }
+      html += noteRowHtml(note);
+    }
+    if (open) html += '</ul></div>';
+    container.innerHTML = html;
+  }
+
+  function renderFlat(container, notes, emptyHtml) {
+    if (!notes.length) { container.innerHTML = emptyHtml; return; }
+    let html = '<ul class="note-list">';
+    for (let i = 0; i < notes.length; i++) html += noteRowHtml(notes[i]);
+    html += '</ul>';
+    container.innerHTML = html;
+  }
+
+  function applySort(notes) {
+    const mode = Settings.getSort();
+    const copy = notes.slice();
+
+    copy.sort((a, b) => {
+      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+      if (mode === 'az' || mode === 'za') {
+        const at = (NotesStore.displayTitle(a) || '').toLowerCase();
+        const bt = (NotesStore.displayTitle(b) || '').toLowerCase();
+        const cmp = at.localeCompare(bt);
+        return mode === 'az' ? cmp : -cmp;
+      }
+      if (mode === 'oldest') return a.updatedAt - b.updatedAt;
+      return b.updatedAt - a.updatedAt;
+    });
+    return copy;
+  }
+
+  function renderHome() {
+    const dayStart = state.homeDate != null ? state.homeDate : startOfDay(Date.now());
+    const dayEnd = dayStart + DAY;
+    const todays = NotesStore.liveText().filter((n) => n.updatedAt >= dayStart && n.updatedAt < dayEnd);
+    const sorted = NotesStore.sorted(todays);
+    renderGrouped(el.homeList, sorted, emptyStateHtml('i-home', 'No notes for this day', 'Tap + to start writing something.'));
+  }
+
+  function renderDrawHome() {
+    const query = el.drawSearchInput.value.trim();
+    const hasQuery = !!query;
+
+    if (hasQuery) {
+      el.drawAllLabel.textContent = 'Results';
+    } else if (state.drawSearchExpanded) {
+      el.drawAllLabel.textContent = 'All drawings';
+    } else {
+      el.drawAllLabel.textContent = 'See all drawings';
+    }
+
+    let source;
+    if (hasQuery) {
+      const results = Search.run(query, NotesStore.liveDrawings());
+      if (!results.length) {
+        el.drawHomeList.innerHTML = emptyStateHtml('i-search', 'No drawings found', 'Try a different name.');
+        return;
+      }
+      source = applySort(results);
+    } else if (state.drawSearchExpanded) {
+      source = applySort(NotesStore.liveDrawings());
+      if (!source.length) {
+        el.drawHomeList.innerHTML = emptyStateHtml('i-draw', 'No drawings yet', 'Tap + to start drawing.');
+        return;
+      }
+    } else {
+      const dayStart = state.drawHomeDate != null ? state.drawHomeDate : startOfDay(Date.now());
+      const dayEnd = dayStart + DAY;
+      source = NotesStore.liveDrawings().filter(n => n.updatedAt >= dayStart && n.updatedAt < dayEnd);
+      source = NotesStore.sorted(source);
+      if (!source.length) {
+        el.drawHomeList.innerHTML = emptyStateHtml('i-draw', 'No drawings for this day', 'Tap + to start drawing.');
+        return;
+      }
+    }
+    renderGrouped(el.drawHomeList, source, '');
+  }
+
+  function renderSearch() {
+    const query = el.searchInput.value;
+    const hasQuery = !!query.trim();
+    el.searchClear.hidden = !query;
+    const sortLabel = SORT_LABELS[Settings.getSort()] || 'Newest';
+    el.allNotesSortLabel.textContent = sortLabel;
+
+    if (hasQuery) {
+      el.allNotesLabel.textContent = 'Results';
+      el.allNotesSort.classList.remove('is-hidden');
+    } else if (state.searchExpanded) {
+      el.allNotesLabel.textContent = 'All notes';
+      el.allNotesSort.classList.remove('is-hidden');
+    } else {
+      el.allNotesLabel.textContent = 'See all notes';
+      el.allNotesSort.classList.add('is-hidden');
+    }
+
+    if (hasQuery) {
+      const results = Search.run(query, NotesStore.liveText());
+      if (!results.length) {
+        el.searchList.innerHTML = emptyStateHtml('i-search', 'No notes found', 'Try a different word or check the spelling.');
+        return;
+      }
+      renderFlat(el.searchList, applySort(results), '');
+      return;
+    }
+
+    if (!state.searchExpanded) {
+      el.searchList.innerHTML = emptyStateHtml('i-search', 'Search your notes', 'Find notes by title, content, or category.');
+      return;
+    }
+
+    const all = applySort(NotesStore.liveText());
+    if (!all.length) {
+      el.searchList.innerHTML = emptyStateHtml('i-search', 'No notes yet', 'Tap + to start writing something.');
+      return;
+    }
+    renderFlat(el.searchList, all, '');
+  }
+
+  function renderCategoriesView() {
+    const detail = state.catDetail;
+    const view = Settings.getCategoryView();
+    const counts = NotesStore.countsByCategory();
+    const favoritesCount = NotesStore.favorites().length;
+
+    if (detail) {
+      el.catBack.hidden = false;
+      el.catTitle.textContent = detail.name;
+      el.catHeaderActions.hidden = true;
+
+      const notes = detail.id === 'favorites' ? NotesStore.favorites() : NotesStore.byCategory(detail.id);
+
+      if (detail.id === 'favorites') {
+        renderFlat(el.catContent, notes, emptyStateHtml('i-star', 'No favorite notes yet', 'Tap the star on a note to save it here.'));
+      } else {
+        renderFlat(el.catContent, notes, emptyStateHtml('i-categories', 'No notes in ' + detail.name, 'Notes assigned to this category will show up here.'));
+      }
+      return;
+    }
+
+    el.catBack.hidden = true;
+    el.catTitle.textContent = 'Categories';
+    el.catHeaderActions.hidden = false;
+
+    const toggleIcon = view === 'grid' ? 'i-list' : 'i-grid';
+    const toggleLabel = view === 'grid' ? 'Switch to list view' : 'Switch to grid view';
+    el.catViewToggle.setAttribute('aria-label', toggleLabel);
+    el.catViewToggle.innerHTML = '<svg class="ico ico-20" aria-hidden="true"><use href="#' + toggleIcon + '"/></svg>';
+
+    const cats = Settings.getCategories();
+    let html = '';
+
+    html += '<button type="button" class="fav-entry" id="cat-favorites" aria-label="Open favorites">' +
+        '<span class="fav-entry-icon" aria-hidden="true"><svg class="ico"><use href="#i-star"/></svg></span>' +
+        '<span class="fav-entry-label">Favorites</span>' +
+        '<span class="fav-entry-count">' + favoritesCount + '</span>' +
+        '<svg class="ico ico-18 row-chev" aria-hidden="true"><use href="#i-chevron"/></svg>' +
+      '</button>';
+
+    html += '<h2 class="group-title cat-section-title">All categories</h2>';
+
+    if (!cats.length) {
+      html += '<p class="cat-empty">No categories.</p>';
+    } else if (view === 'grid') {
+      html += '<div class="cat-grid" id="cat-grid">';
+      for (const c of cats) {
+        html += (
+          '<button type="button" class="cat-card" data-cat-id="' + escapeHtml(c.id) + '">' +
+            '<span class="cat-card-icon" aria-hidden="true">' +
+              '<svg class="ico"><use href="#' + escapeHtml(c.icon) + '"/></svg>' +
+            '</span>' +
+            '<span class="cat-card-name">' + escapeHtml(c.name) + '</span>' +
+            '<span class="cat-card-count">' + (counts[c.id] || 0) +
+              (counts[c.id] === 1 ? ' note' : ' notes') + '</span>' +
+          '</button>'
+        );
+      }
+      html += '</div>';
+    } else {
+      html += '<div class="cat-list" id="cat-list">';
+      for (const c of cats) {
+        html += (
+          '<button type="button" class="cat-list-item" data-cat-id="' + escapeHtml(c.id) + '">' +
+            '<span class="cat-list-icon" aria-hidden="true">' +
+              '<svg class="ico"><use href="#' + escapeHtml(c.icon) + '"/></svg>' +
+            '</span>' +
+            '<span class="cat-list-name">' + escapeHtml(c.name) + '</span>' +
+            '<span class="cat-list-count">' + (counts[c.id] || 0) + '</span>' +
+            '<svg class="ico ico-18 row-chev" aria-hidden="true"><use href="#i-chevron"/></svg>' +
+          '</button>'
+        );
+      }
+      html += '</div>';
+    }
+
+    el.catContent.innerHTML = html;
+  }
+
+  function openCategoryDetail(id) {
+    if (id === 'favorites') {
+      state.catDetail = { id: 'favorites', name: 'Favorites' };
+    } else {
+      const cat = Settings.getCategory(id);
+      if (!cat) return;
+      state.catDetail = { id: cat.id, name: cat.name };
+    }
+    renderCategoriesView();
+    const v = $('#view-categories');
+    if (v) v.scrollTop = 0;
+  }
+
+  function closeCategoryDetail() {
+    state.catDetail = null;
+    renderCategoriesView();
+  }
+/* ==========================================================
      Category actions sheet
      ========================================================== */
 
