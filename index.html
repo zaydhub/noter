@@ -48,6 +48,7 @@
     <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 10h17M8 2.5v4M16 2.5v4"/></symbol>
     <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></symbol>
     <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13"/></symbol>
+    <symbol id="i-eraser" viewBox="0 0 24 24"><path d="m9 20-5-5 11-11a2.1 2.1 0 0 1 3 0l2 2a2.1 2.1 0 0 1 0 3L11 20z"/><path d="m15 14 5 5"/><path d="M9 20h11"/></symbol>
 
     <symbol id="c-thought" viewBox="0 0 24 24"><path d="M4.5 11.5a4 4 0 0 1 4-4h7a4 4 0 0 1 0 8h-2.5l-3.5 3v-3h-1a4 4 0 0 1-4-4z"/></symbol>
     <symbol id="c-idea" viewBox="0 0 24 24"><path d="M12 4.5a5.5 5.5 0 0 0-3.3 9.9c.5.4.8.9.9 1.5l.1.6h4.6l.1-.6c.1-.6.4-1.1.9-1.5A5.5 5.5 0 0 0 12 4.5z"/><path d="M10 19h4"/><path d="M10.5 21.5h3"/></symbol>
@@ -330,49 +331,64 @@
     </section>
 
     <!-- CANVAS VIEW -->
-    <section class="view" id="view-draw-canvas" data-view="draw-canvas" aria-label="Canvas" style="overflow: hidden;">
-      <header class="view-header view-header--title" style="padding-bottom: 10px;">
-        <div class="header-row">
-          <button type="button" class="icon-btn header-back" id="draw-canvas-back" aria-label="Back">
-            <svg class="ico ico-22" aria-hidden="true"><use href="#i-back"/></svg>
-          </button>
-          <input type="text" id="draw-canvas-title" class="draw-title-input" placeholder="Untitled Drawing" autocomplete="off">
-          <div class="header-actions">
-            <button type="button" class="text-btn" id="draw-canvas-save">Done</button>
-          </div>
-        </div>
+    <section class="view" id="view-draw-canvas" data-view="draw-canvas" aria-label="Canvas" style="overflow: hidden; background: #ffffff;">
+      
+      <!-- Top Bar -->
+      <header class="draw-header">
+        <button type="button" class="draw-icon-btn" id="draw-canvas-back" aria-label="Back">
+          <svg class="ico ico-22" aria-hidden="true"><use href="#i-back"/></svg>
+        </button>
+        <input type="text" id="draw-canvas-title" class="draw-title-input" placeholder="Untitled Drawing" autocomplete="off">
+        <button type="button" class="draw-text-btn" id="draw-canvas-save">Done</button>
       </header>
       
-      <div class="canvas-wrapper">
+      <!-- Canvas Area -->
+      <div class="canvas-wrapper" id="canvas-wrapper">
         <canvas id="drawing-canvas"></canvas>
       </div>
 
+      <!-- Sub-Toolbar (Colors & Sizes) -->
+      <div class="draw-sub-toolbar" id="draw-sub-toolbar">
+        <div class="sub-toolbar-row" id="color-swatches">
+          <button type="button" class="draw-color-swatch is-active" data-color="#000000" style="background:#000000"></button>
+          <button type="button" class="draw-color-swatch" data-color="#ff3b30" style="background:#ff3b30"></button>
+          <button type="button" class="draw-color-swatch" data-color="#ffcc00" style="background:#ffcc00"></button>
+          <button type="button" class="draw-color-swatch" data-color="#34c759" style="background:#34c759"></button>
+          <button type="button" class="draw-color-swatch" data-color="#007aff" style="background:#007aff"></button>
+          <button type="button" class="draw-color-swatch" data-color="#af52de" style="background:#af52de"></button>
+          <button type="button" class="draw-color-swatch" data-color="#8e8e93" style="background:#8e8e93"></button>
+        </div>
+        <div class="sub-toolbar-row size-row" id="size-options">
+          <button type="button" class="size-btn is-active" data-size="2"><span style="width:2px;height:2px;"></span></button>
+          <button type="button" class="size-btn" data-size="4"><span style="width:4px;height:4px;"></span></button>
+          <button type="button" class="size-btn" data-size="6"><span style="width:6px;height:6px;"></span></button>
+          <button type="button" class="size-btn" data-size="10"><span style="width:10px;height:10px;"></span></button>
+          <button type="button" class="size-btn" data-size="16"><span style="width:16px;height:16px;"></span></button>
+          <button type="button" class="size-btn" data-size="24"><span style="width:24px;height:24px;"></span></button>
+          <button type="button" class="size-btn" data-size="36"><span style="width:36px;height:36px;"></span></button>
+          <button type="button" class="size-btn" data-size="48"><span style="width:48px;height:48px;"></span></button>
+        </div>
+      </div>
+
+      <!-- Main Toolbar (Bottom) -->
       <div class="draw-toolbar">
         <button type="button" class="tool-btn is-active" id="tool-pen" aria-label="Pen">
-          <svg class="ico ico-20" aria-hidden="true"><use href="#i-draw"/></svg>
+          <svg class="ico ico-22" aria-hidden="true"><use href="#i-draw"/></svg>
+          <span class="pen-color-indicator" id="pen-color-indicator" style="background: #000000;"></span>
         </button>
         <button type="button" class="tool-btn" id="tool-eraser" aria-label="Eraser">
-          <svg class="ico ico-20" aria-hidden="true"><use href="#i-close"/></svg>
+          <svg class="ico ico-22" aria-hidden="true"><use href="#i-eraser"/></svg>
         </button>
-        <div class="tool-sep"></div>
-        <div class="color-swatches" id="color-swatches">
-          <button type="button" class="color-swatch is-active" data-color="#000000" style="background:#000000" aria-label="Black"></button>
-          <button type="button" class="color-swatch" data-color="#ff3b30" style="background:#ff3b30" aria-label="Red"></button>
-          <button type="button" class="color-swatch" data-color="#007aff" style="background:#007aff" aria-label="Blue"></button>
-          <button type="button" class="color-swatch" data-color="#34c759" style="background:#34c759" aria-label="Green"></button>
-          <button type="button" class="color-swatch" data-color="#ffcc00" style="background:#ffcc00" aria-label="Yellow"></button>
-        </div>
-        <div class="tool-sep"></div>
-        <input type="range" id="tool-size" min="1" max="20" value="3" class="size-slider" aria-label="Stroke thickness">
-        <div class="tool-sep"></div>
+        <div style="flex: 1"></div>
         <button type="button" class="tool-btn" id="tool-undo" aria-label="Undo">
-          <svg class="ico ico-20" aria-hidden="true"><use href="#i-undo"/></svg>
+          <svg class="ico ico-22" aria-hidden="true"><use href="#i-undo"/></svg>
         </button>
         <button type="button" class="tool-btn" id="tool-redo" aria-label="Redo">
-          <svg class="ico ico-20" aria-hidden="true"><use href="#i-redo"/></svg>
+          <svg class="ico ico-22" aria-hidden="true"><use href="#i-redo"/></svg>
         </button>
-        <button type="button" class="tool-btn" id="tool-clear" aria-label="Clear All" style="color:var(--danger)">
-          <svg class="ico ico-20" aria-hidden="true"><use href="#i-trash"/></svg>
+        <div style="flex: 1"></div>
+        <button type="button" class="tool-btn" id="tool-clear" aria-label="Clear All">
+          <svg class="ico ico-22" aria-hidden="true"><use href="#i-trash"/></svg>
         </button>
       </div>
     </section>
