@@ -18,39 +18,18 @@
   const el = {
     metaTheme:      $('#meta-theme-color'),
     views:          $$('.view'),
-    
     tabbar:         $('#tabbar'),
-    drawTabbar:     $('#draw-tabbar'),
     tabs:           $$('.tab'),
-    
     fab:            $('#fab'),
-    drawFab:        $('#draw-fab'),
-
-    sidebarOverlay: $('#sidebar-overlay'),
-    sidebarItems:   $$('.sidebar-item'),
-    sidebarOpen:    $('#sidebar-open'),
-    drawSidebarOpen:$('#draw-sidebar-open'),
-
     greetingTitle:  $('#greeting-title'),
     greetingSub:    $('#greeting-sub'),
     homeDate:       $('#home-date'),
     homeDateStrip:  $('#home-date-strip'),
     homeList:       $('#home-list'),
-
-    drawHomeDate:   $('#draw-home-date'),
-    drawHomeDateStrip: $('#draw-home-date-strip'),
-    drawHomeList:   $('#draw-home-list'),
-    
-    drawSearchInput: $('#draw-search-input'),
-    drawSearchClear: $('#draw-search-clear'),
-    drawSearchHeader: $('#view-draw-search .view-header--search'),
-    drawSearchList:  $('#draw-search-list'),
-    drawAllLabel:    $('#draw-all-label'),
-
     searchList:     $('#search-list'),
     searchInput:    $('#search-input'),
     searchClear:    $('#search-clear'),
-    searchHeader:   $('#view-search .view-header--search'),
+    searchHeader:   $('.view-header--search'),
     allNotesLabel:  $('#all-notes-label'),
     allNotesSort:   $('#all-notes-sort'),
     allNotesSortLabel: $('#all-notes-sort-label'),
@@ -149,7 +128,6 @@
   };
 
   const state = {
-    appMode: 'noter', // 'noter' | 'draw' | 'calendar'
     view: 'home',
     editor: null,
     sheetNoteId: null,
@@ -168,11 +146,7 @@
     homeDate: null,
     homeDateInitialized: false,
 
-    drawHomeDate: null,
-    drawHomeDateInitialized: false,
-
     searchExpanded: false,
-    drawSearchExpanded: false,
 
     moreSub: 'main'
   };
@@ -252,7 +226,6 @@
     el.greetingTitle.textContent = greeting + ', Zayd';
     el.greetingSub.textContent = 'What’s on your mind?';
     if (el.homeDate) el.homeDate.textContent = longDate(Date.now());
-    if (el.drawHomeDate) el.drawHomeDate.textContent = longDate(Date.now());
   }
 
   function syncStatusBar() {
@@ -275,16 +248,18 @@
   }
 
   /* ==========================================================
-     Date strips
+     Home date strip
      ========================================================== */
 
-  function buildDateStrip(stripEl, selectedTs) {
-    if (!stripEl) return;
+  function renderDateStrip() {
+    if (!el.homeDateStrip) return;
 
     const todayMid = startOfDay(Date.now());
-    if (selectedTs === null) {
-      selectedTs = todayMid;
+    if (!state.homeDateInitialized) {
+      state.homeDate = todayMid;
+      state.homeDateInitialized = true;
     }
+    if (state.homeDate === null) state.homeDate = todayMid;
 
     const ref = new Date(todayMid);
     const year = ref.getFullYear();
@@ -294,7 +269,7 @@
 
     let html = '';
     for (let ts = firstMid; ts <= lastMid; ts += DAY) {
-      const isSelected = ts === selectedTs;
+      const isSelected = ts === state.homeDate;
       const classes = 'date-chip' + (isSelected ? ' is-selected' : '');
       html += (
         '<button type="button" class="' + classes + '" data-day="' + ts + '" ' +
@@ -304,33 +279,18 @@
         '</button>'
       );
     }
-    stripEl.innerHTML = html;
+    el.homeDateStrip.innerHTML = html;
 
     requestAnimationFrame(() => {
-      if (!stripEl) return;
-      const target = stripEl.querySelector('.date-chip.is-selected');
+      if (!el.homeDateStrip) return;
+      const target = el.homeDateStrip.querySelector('.date-chip.is-selected');
       if (!target) return;
+      const strip = el.homeDateStrip;
       const targetCenter = target.offsetLeft + target.offsetWidth / 2;
-      const stripHalf = stripEl.clientWidth / 2;
+      const stripHalf = strip.clientWidth / 2;
       const nextLeft = Math.max(0, targetCenter - stripHalf);
-      stripEl.scrollTo({ left: nextLeft, behavior: 'auto' });
+      strip.scrollTo({ left: nextLeft, behavior: 'auto' });
     });
-  }
-
-  function renderNoterDateStrip() {
-    if (!state.homeDateInitialized) {
-      state.homeDate = startOfDay(Date.now());
-      state.homeDateInitialized = true;
-    }
-    buildDateStrip(el.homeDateStrip, state.homeDate);
-  }
-
-  function renderDrawDateStrip() {
-    if (!state.drawHomeDateInitialized) {
-      state.drawHomeDate = startOfDay(Date.now());
-      state.drawHomeDateInitialized = true;
-    }
-    buildDateStrip(el.drawHomeDateStrip, state.drawHomeDate);
   }
 
   /* ==========================================================
@@ -340,10 +300,12 @@
   function noteFlagsHtml(note) {
     let html = '';
     if (note.pinned) {
-      html += '<svg class="note-flag note-flag--pin" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-pin"/></svg>';
+      html += '<svg class="note-flag note-flag--pin" viewBox="0 0 24 24" aria-hidden="true">' +
+              '<use href="#i-pin"/></svg>';
     }
     if (note.favorite) {
-      html += '<svg class="note-flag note-flag--fav" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-star"/></svg>';
+      html += '<svg class="note-flag note-flag--fav" viewBox="0 0 24 24" aria-hidden="true">' +
+              '<use href="#i-star"/></svg>';
     }
     return html;
   }
@@ -358,17 +320,12 @@
     const time = escapeHtml(formatTime(note.updatedAt));
     const day = escapeHtml(formatDay(note.updatedAt));
 
-    let iconHtml = '';
-    if (note.type === 'drawing') {
-       iconHtml = '<span class="note-icon" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24"><use href="#i-draw"/></svg></span>';
-    } else {
-       iconHtml = '<span class="note-icon" aria-hidden="true"><svg class="ico"><use href="#' + escapeHtml(cat.icon) + '"/></svg></span>';
-    }
-
     return (
       '<li class="note-item" data-id="' + escapeHtml(note.id) + '">' +
         '<div class="note-face" role="button" tabindex="0" aria-label="' + escapeHtml(aria) + '">' +
-          iconHtml +
+          '<span class="note-icon" aria-hidden="true">' +
+            '<svg class="ico"><use href="#' + escapeHtml(cat.icon) + '"/></svg>' +
+          '</span>' +
           '<span class="note-main">' +
             '<span class="note-title-row">' +
               '<span class="' + titleClass + '">' + titleText + '</span>' +
@@ -393,17 +350,12 @@
     const daysText = days === 1 ? 'Deletes in 1 day' : ('Deletes in ' + days + ' days');
     const aria = (title ? title : 'Empty note') + '. ' + daysText;
 
-    let iconHtml = '';
-    if (note.type === 'drawing') {
-       iconHtml = '<span class="note-icon" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24"><use href="#i-draw"/></svg></span>';
-    } else {
-       iconHtml = '<span class="note-icon" aria-hidden="true"><svg class="ico"><use href="#' + escapeHtml(cat.icon) + '"/></svg></span>';
-    }
-
     return (
       '<li class="note-item trash-item" data-id="' + escapeHtml(note.id) + '">' +
         '<div class="note-face" role="button" tabindex="0" aria-label="' + escapeHtml(aria) + '">' +
-          iconHtml +
+          '<span class="note-icon" aria-hidden="true">' +
+            '<svg class="ico"><use href="#' + escapeHtml(cat.icon) + '"/></svg>' +
+          '</span>' +
           '<span class="note-main">' +
             '<span class="note-title-row">' +
               '<span class="' + titleClass + '">' + titleText + '</span>' +
@@ -488,7 +440,7 @@
     const dayStart = state.homeDate != null ? state.homeDate : startOfDay(Date.now());
     const dayEnd = dayStart + DAY;
 
-    const todays = NotesStore.liveText().filter((n) => {
+    const todays = NotesStore.live().filter((n) => {
       return n.updatedAt >= dayStart && n.updatedAt < dayEnd;
     });
 
@@ -498,23 +450,6 @@
       el.homeList,
       sorted,
       emptyStateHtml('i-home', 'No notes for this day', 'Tap + to start writing something.')
-    );
-  }
-
-  function renderDrawHome() {
-    const dayStart = state.drawHomeDate != null ? state.drawHomeDate : startOfDay(Date.now());
-    const dayEnd = dayStart + DAY;
-
-    const todays = NotesStore.liveDrawings().filter((n) => {
-      return n.updatedAt >= dayStart && n.updatedAt < dayEnd;
-    });
-
-    const sorted = NotesStore.sorted(todays);
-
-    renderGrouped(
-      el.drawHomeList,
-      sorted,
-      emptyStateHtml('i-draw', 'No drawings for this day', 'Tap + to start drawing.')
     );
   }
 
@@ -538,7 +473,7 @@
     }
 
     if (hasQuery) {
-      const results = Search.run(query, NotesStore.liveText());
+      const results = Search.run(query, NotesStore.live());
       if (!results.length) {
         el.searchList.innerHTML = emptyStateHtml(
           'i-search', 'No notes found', 'Try a different word or check the spelling.'
@@ -556,7 +491,7 @@
       return;
     }
 
-    const all = applySort(NotesStore.liveText());
+    const all = applySort(NotesStore.live());
     if (!all.length) {
       el.searchList.innerHTML = emptyStateHtml(
         'i-search', 'No notes yet', 'Tap + to start writing something.'
@@ -564,43 +499,6 @@
       return;
     }
     renderFlat(el.searchList, all, '');
-  }
-
-  function renderDrawSearch() {
-    const query = el.drawSearchInput.value;
-    const hasQuery = !!query.trim();
-    el.drawSearchClear.hidden = !query;
-
-    if (hasQuery) {
-      el.drawAllLabel.textContent = 'Results';
-      const results = Search.run(query, NotesStore.liveDrawings());
-      if (!results.length) {
-        el.drawSearchList.innerHTML = emptyStateHtml(
-          'i-search', 'No drawings found', 'Try a different word.'
-        );
-        return;
-      }
-      renderFlat(el.drawSearchList, applySort(results), '');
-      return;
-    }
-
-    if (!state.drawSearchExpanded) {
-      el.drawAllLabel.textContent = 'See all drawings';
-      el.drawSearchList.innerHTML = emptyStateHtml(
-        'i-search', 'Search your drawings', 'Find drawings by name.'
-      );
-      return;
-    }
-
-    el.drawAllLabel.textContent = 'All drawings';
-    const all = applySort(NotesStore.liveDrawings());
-    if (!all.length) {
-      el.drawSearchList.innerHTML = emptyStateHtml(
-        'i-search', 'No drawings yet', 'Tap + to start drawing.'
-      );
-      return;
-    }
-    renderFlat(el.drawSearchList, all, '');
   }
 
   /* ==========================================================
@@ -1065,37 +963,6 @@
   }
 
   /* ==========================================================
-     App Mode Switcher
-     ========================================================== */
-
-  function switchAppMode(mode) {
-    if (state.appMode === mode) return;
-    state.appMode = mode;
-
-    // Update sidebar UI
-    el.sidebarItems.forEach(item => {
-      item.classList.toggle('is-active', item.dataset.appMode === mode);
-    });
-    el.sidebarOverlay.hidden = true;
-
-    if (mode === 'noter') {
-      switchView('home');
-      el.tabbar.hidden = false;
-      el.drawTabbar.hidden = true;
-    } else if (mode === 'draw') {
-      switchView('draw-home');
-      el.tabbar.hidden = true;
-      el.drawTabbar.hidden = false;
-    } else if (mode === 'calendar') {
-      el.tabbar.hidden = true;
-      el.drawTabbar.hidden = true;
-      // Calendar logic will go here in Stage 3
-      showToast('Calendar coming in Stage 3');
-      switchAppMode('noter'); // Fallback for now
-    }
-  }
-
-  /* ==========================================================
      Navigation
      ========================================================== */
 
@@ -1104,28 +971,15 @@
     state.view = name;
 
     for (const v of el.views) v.classList.toggle('is-active', v.dataset.view === name);
-    
-    // Noter Tabs
-    for (const tab of $$('#tabbar .tab')) {
+    for (const tab of el.tabs) {
       const active = tab.dataset.tab === name;
       tab.classList.toggle('is-active', active);
       if (active) tab.setAttribute('aria-current', 'page');
       else tab.removeAttribute('aria-current');
     }
 
-    // Draw Tabs
-    for (const tab of $$('#draw-tabbar .tab')) {
-      const active = tab.dataset.drawTab === name;
-      tab.classList.toggle('is-active', active);
-      if (active) tab.setAttribute('aria-current', 'page');
-      else tab.removeAttribute('aria-current');
-    }
-
     if (name !== 'search' && document.activeElement === el.searchInput) el.searchInput.blur();
-    if (name !== 'draw-search' && document.activeElement === el.drawSearchInput) el.drawSearchInput.blur();
-    
-    el.fab.classList.toggle('is-hidden', name !== 'home' && name !== 'search' && name !== 'categories' && name !== 'more');
-    el.drawFab.classList.toggle('is-hidden', name !== 'draw-home' && name !== 'draw-search');
+    el.fab.classList.toggle('is-hidden', name === 'more' || name === 'categories');
 
     if (name === 'categories') {
       state.catDetail = null;
@@ -1135,11 +989,6 @@
       updateMoreValues();
     } else if (name === 'search') {
       renderSearch();
-    } else if (name === 'draw-home') {
-      renderDrawHome();
-      renderDrawDateStrip();
-    } else if (name === 'draw-search') {
-      renderDrawSearch();
     }
   }
 
@@ -1440,7 +1289,7 @@
       if (!existing || existing.deletedAt) return;
       note = Object.assign({}, existing);
     } else {
-      note = NotesStore.createDraft(defaultCategoryForNewNote(), 'text');
+      note = NotesStore.createDraft(defaultCategoryForNewNote());
       isNew = true;
     }
     state.editor = {
@@ -1575,11 +1424,6 @@
      ========================================================== */
 
   function handleBack() {
-    if (!el.sidebarOverlay.hidden) {
-      el.sidebarOverlay.hidden = true;
-      return true;
-    }
-
     if (!el.savePromptBackdrop.hidden) {
       cancelSavePrompt();
       return true;
@@ -1602,17 +1446,6 @@
     if (isMoreSubOpen()) { closeMoreSub(); return true; }
 
     if (state.catDetail) { closeCategoryDetail(); return true; }
-
-    if (state.view !== 'home' && state.view !== 'draw-home') {
-      if (state.appMode === 'draw') switchView('draw-home');
-      else switchView('home');
-      return true;
-    }
-
-    if (state.appMode === 'draw') {
-      switchAppMode('noter');
-      return true;
-    }
 
     if (state.view !== 'home') {
       switchView('home');
@@ -1784,8 +1617,6 @@
   function renderAllNotesViews() {
     renderHome();
     renderSearch();
-    renderDrawHome();
-    renderDrawSearch();
     if (state.view === 'categories' || state.catDetail) renderCategoriesView();
     if (isMoreSubOpen() && state.moreSub === 'trash') renderTrashView();
   }
@@ -2104,17 +1935,6 @@
      ========================================================== */
 
   function wireEvents() {
-    // Sidebar logic
-    if (el.sidebarOpen) el.sidebarOpen.addEventListener('click', () => { el.sidebarOverlay.hidden = false; });
-    if (el.drawSidebarOpen) el.drawSidebarOpen.addEventListener('click', () => { el.sidebarOverlay.hidden = false; });
-    el.sidebarOverlay.addEventListener('click', (e) => {
-      if (e.target === el.sidebarOverlay) el.sidebarOverlay.hidden = true;
-    });
-    el.sidebarItems.forEach(item => {
-      item.addEventListener('click', () => switchAppMode(item.dataset.appMode));
-    });
-
-    // Noter Tabs
     el.tabbar.addEventListener('click', (e) => {
       const tab = e.target.closest('.tab');
       if (!tab) return;
@@ -2123,27 +1943,9 @@
       switchView(name);
     });
 
-    // Draw Tabs
-    el.drawTabbar.addEventListener('click', (e) => {
-      const tab = e.target.closest('.tab');
-      if (!tab) return;
-      const name = tab.dataset.drawTab;
-      if (!name || name === state.view) return;
-      if (name === 'draw-canvas') {
-        showToast('Canvas tool coming in Stage 2');
-        return;
-      }
-      switchView(name);
-    });
-
-    // FABs
     el.fab.addEventListener('click', () => openEditor(null));
-    el.drawFab.addEventListener('click', () => {
-       showToast('Canvas tool coming in Stage 2');
-    });
 
-    // Keep all existing event listeners below (notes, search, categories, dialogs, etc.)
-    const noteLists = [el.homeList, el.searchList, el.catContent, el.trashList, el.drawHomeList, el.drawSearchList];
+    const noteLists = [el.homeList, el.searchList, el.catContent, el.trashList];
     for (const list of noteLists) {
       list.addEventListener('click', handleListClick);
       list.addEventListener('keydown', handleListKeydown);
@@ -2166,21 +1968,8 @@
         if (!Number.isFinite(ts)) return;
         if (state.homeDate === ts) return;
         state.homeDate = ts;
-        renderNoterDateStrip();
+        renderDateStrip();
         renderHome();
-      });
-    }
-
-    if (el.drawHomeDateStrip) {
-      el.drawHomeDateStrip.addEventListener('click', (e) => {
-        const chip = e.target.closest('.date-chip');
-        if (!chip) return;
-        const ts = Number(chip.dataset.day);
-        if (!Number.isFinite(ts)) return;
-        if (state.drawHomeDate === ts) return;
-        state.drawHomeDate = ts;
-        renderDrawDateStrip();
-        renderDrawHome();
       });
     }
 
@@ -2212,29 +2001,6 @@
     const searchView = $('#view-search');
     searchView.addEventListener('scroll', () => {
       el.searchHeader.classList.toggle('is-scrolled', searchView.scrollTop > 2);
-    }, { passive: true });
-
-    // Draw Search
-    let drawSearchRaf = 0;
-    el.drawSearchInput.addEventListener('input', () => {
-      if (drawSearchRaf) return;
-      drawSearchRaf = requestAnimationFrame(() => { drawSearchRaf = 0; renderDrawSearch(); });
-    });
-
-    el.drawSearchClear.addEventListener('click', () => {
-      el.drawSearchInput.value = '';
-      renderDrawSearch();
-      el.drawSearchInput.focus({ preventScroll: true });
-    });
-
-    el.drawAllLabel.addEventListener('click', () => {
-      state.drawSearchExpanded = !state.drawSearchExpanded;
-      renderDrawSearch();
-    });
-
-    const drawSearchView = $('#view-draw-search');
-    drawSearchView.addEventListener('scroll', () => {
-      el.drawSearchHeader.classList.toggle('is-scrolled', drawSearchView.scrollTop > 2);
     }, { passive: true });
 
     el.catBack.addEventListener('click', (e) => {
@@ -2461,7 +2227,6 @@
 
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
-      if (!el.sidebarOverlay.hidden) { el.sidebarOverlay.hidden = true; return; }
       if (!el.savePromptBackdrop.hidden) { cancelSavePrompt(); return; }
       if (state.catEditor) { closeCategoryEditor(); return; }
       if (state.catSheetId) { closeCategoryActions(); return; }
@@ -2517,8 +2282,7 @@
     syncThemeUI();
     renderAccentSwatches();
     updateGreeting();
-    renderNoterDateStrip();
-    renderDrawDateStrip();
+    renderDateStrip();
     updateMoreValues();
     setInterval(updateGreeting, 60000);
 
@@ -2550,7 +2314,7 @@
           const selectedOffset = Math.round((state.homeDate - todayMid) / DAY);
           if (selectedOffset < -15 || selectedOffset > 15) {
             state.homeDate = todayMid;
-            renderNoterDateStrip();
+            renderDateStrip();
           }
         }
         renderAll();
