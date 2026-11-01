@@ -44,18 +44,20 @@
       this.ready = true;
       return this.notes;
     },
+     
 
     /* ---- Live vs trashed slices ---- */
 
     live() {
-       liveText() {
+      return this.notes.filter((n) => !n.deletedAt);
+    },
+
+    liveText() {
       return this.live().filter((n) => n.type === 'text');
     },
 
     liveDrawings() {
       return this.live().filter((n) => n.type === 'drawing');
-    },
-      return this.notes.filter((n) => !n.deletedAt);
     },
 
     trashed() {
