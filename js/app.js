@@ -21,6 +21,10 @@
     tabbar:         $('#tabbar'),
     tabs:           $$('.tab'),
     fab:            $('#fab'),
+    drawFab:        $('#draw-fab'),
+    drawHomeList:   $('#draw-home-list'),
+    drawHomeDate:   $('#draw-home-date'),
+    drawHomeDateStrip: $('#draw-home-date-strip'),
     greetingTitle:  $('#greeting-title'),
     sidebarOverlay: $('#sidebar-overlay'),
     sidebarItems:   $$('.sidebar-item'),
@@ -131,6 +135,7 @@
   };
 
   const state = {
+    appMode: 'noter',
     view: 'home',
     editor: null,
     sheetNoteId: null,
@@ -969,31 +974,69 @@
      Navigation
      ========================================================== */
 
-  function switchView(name) {
-    if (state.view === name) return;
-    state.view = name;
+  function switchAppMode(mode) {
+  if (state.appMode === mode) return;
+  state.appMode = mode;
 
-    for (const v of el.views) v.classList.toggle('is-active', v.dataset.view === name);
-    for (const tab of el.tabs) {
-      const active = tab.dataset.tab === name;
-      tab.classList.toggle('is-active', active);
-      if (active) tab.setAttribute('aria-current', 'page');
-      else tab.removeAttribute('aria-current');
-    }
+  el.sidebarItems.forEach(item => {
+    item.classList.toggle('is-active', item.dataset.appMode === mode);
+  });
 
-    if (name !== 'search' && document.activeElement === el.searchInput) el.searchInput.blur();
-    el.fab.classList.toggle('is-hidden', name === 'more' || name === 'categories');
-
-    if (name === 'categories') {
-      state.catDetail = null;
-      renderCategoriesView();
-    } else if (name === 'more') {
-      closeMoreSub();
-      updateMoreValues();
-    } else if (name === 'search') {
-      renderSearch();
-    }
+  if (mode === 'noter') {
+    switchView('home');
+    el.tabbar.hidden = false;
+    el.fab.classList.remove('is-hidden');
+    el.drawFab.classList.add('is-hidden');
+  } else if (mode === 'draw') {
+    switchView('draw-home');
+    el.tabbar.hidden = true;
+    el.fab.classList.add('is-hidden');
+    el.drawFab.classList.remove('is-hidden');
+  } else if (mode === 'calendar') {
+    el.tabbar.hidden = true;
+    el.fab.classList.add('is-hidden');
+    el.drawFab.classList.add('is-hidden');
+    showToast('Calendar coming in Stage 5');
+    switchAppMode('noter'); // Revert for now
   }
+}
+
+function switchView(name) {
+  if (state.view === name) return;
+  state.view = name;
+
+  for (const v of el.views) v.classList.toggle('is-active', v.dataset.view === name);
+  
+  // Noter Tabs
+  for (const tab of el.tabs) {
+    const active = tab.dataset.tab === name;
+    tab.classList.toggle('is-active', active);
+    if (active) tab.setAttribute('aria-current', 'page');
+    else tab.removeAttribute('aria-current');
+  }
+
+  if (name !== 'search' && document.activeElement === el.searchInput) el.searchInput.blur();
+  
+  // FAB logic based on app mode
+  if (state.appMode === 'noter') {
+    el.fab.classList.toggle('is-hidden', name === 'more' || name === 'categories');
+  } else if (state.appMode === 'draw') {
+    el.drawFab.classList.toggle('is-hidden', name !== 'draw-home');
+  }
+
+  if (name === 'categories') {
+    state.catDetail = null;
+    renderCategoriesView();
+  } else if (name === 'more') {
+    closeMoreSub();
+    updateMoreValues();
+  } else if (name === 'search') {
+    renderSearch();
+  } else if (name === 'draw-home') {
+    renderDrawHome();
+    renderDrawDateStrip();
+  }
+}
 
   /* ==========================================================
      Note actions
@@ -1951,10 +1994,7 @@ el.sidebarOverlay.addEventListener('click', (e) => {
 el.sidebarItems.forEach(item => {
   item.addEventListener('click', () => {
     el.sidebarOverlay.hidden = true;
-    const mode = item.dataset.appMode;
-    if (mode === 'draw') showToast('Draw coming in Stage 3');
-    else if (mode === 'calendar') showToast('Calendar coming in Stage 5');
-    else showToast('Already in Noter');
+    switchAppMode(item.dataset.appMode);
   });
 });
     el.tabbar.addEventListener('click', (e) => {
@@ -2297,7 +2337,17 @@ el.sidebarItems.forEach(item => {
   /* ==========================================================
      Boot
      ========================================================== */
+function renderDrawHome() {
+  // This will be fully built in the next step. 
+  // For now, it just shows an empty state.
+  if (el.drawHomeList) {
+    el.drawHomeList.innerHTML = emptyStateHtml('i-draw', 'No drawings yet', 'Tap + to start drawing.');
+  }
+}
 
+function renderDrawDateStrip() {
+  // This will be built later when we add drawing functionality.
+}
   async function boot() {
     Settings.applyTheme();
     syncStatusBar();
