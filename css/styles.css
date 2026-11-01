@@ -1384,24 +1384,6 @@ html[data-theme="dark"] .toast { background: rgba(58,58,60,.97); border: 1px sol
 }
 .toast-action:active { background: rgba(255,255,255,.12); }
 
-@media (min-width: 620px) {
-  .list-root, .section { padding-left: max(16px, calc((100% - 620px) / 2)); padding-right: max(16px, calc((100% - 620px) / 2)); }
-  .view-header { padding-left: max(20px, calc((100% - 620px) / 2)); padding-right: max(20px, calc((100% - 620px) / 2)); }
-  .editor-body { padding-left: max(20px, calc((100% - 620px) / 2)); padding-right: max(20px, calc((100% - 620px) / 2)); }
-  .cat-scroller { padding-left: max(16px, calc((100% - 620px) / 2)); padding-right: max(16px, calc((100% - 620px) / 2)); }
-  .date-strip { padding-left: max(20px, calc((100% - 620px) / 2)); padding-right: max(20px, calc((100% - 620px) / 2)); margin-left: max(-20px, calc((100% - 620px) / -2 + 20px)); margin-right: max(-20px, calc((100% - 620px) / -2 + 20px)); }
-  .fab { right: max(18px, calc((100% - 620px) / 2 + 18px)); }
-  .footer-note { padding-left: max(24px, calc((100% - 620px) / 2 + 24px)); padding-right: max(24px, calc((100% - 620px) / 2 + 24px)); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: .001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: .001ms !important;
-  }
-}
-
 /* ============================================================
    SIDEBAR (Frosted Glass Style)
    ============================================================ */
@@ -1469,7 +1451,7 @@ html[data-theme="dark"] .sidebar {
    ============================================================ */
 
 #view-draw-canvas {
-  background: var(--surface);
+  background: var(--bg);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -1511,7 +1493,7 @@ html[data-theme="dark"] .sidebar {
 .canvas-wrapper {
   flex: 1 1 auto;
   position: relative;
-  background: #ffffff;
+  background: #ffffff; /* Canvas must be white */
   overflow: hidden;
   touch-action: none; /* Prevent elastic scroll */
 }
@@ -1608,5 +1590,7 @@ html[data-theme="dark"] .sidebar {
   display: block;
   background: var(--text);
   border-radius: 50%;
+  max-width: 100%;
+  max-height: 100%;
 }
 .size-btn.is-active { background: var(--surface-press); }
